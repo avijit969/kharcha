@@ -4,17 +4,16 @@ import ScreenWrapper from '@/components/ScreenWrapper'
 import { ThemedView } from '@/components/ThemedView'
 import { ThemedText } from '@/components/ThemedText'
 
-const dashboard = () => {
-  return (
-    <ScreenWrapper>
-      <ThemedView>
-        <ThemedText>dashboard comming soon</ThemedText>
-
-      </ThemedView>
-    </ScreenWrapper>
-  )
+const notification = () => {
+    return (
+        <ScreenWrapper>
+            <ThemedView style={{ flex: 1 }}>
+                <ThemedText>notification</ThemedText>
+            </ThemedView>
+        </ScreenWrapper>
+    )
 }
 
-export default dashboard
+export default notification
 
 const styles = StyleSheet.create({})

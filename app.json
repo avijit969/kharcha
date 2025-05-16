@@ -2,7 +2,7 @@
   "expo": {
     "name": "kharcha",
     "slug": "kharcha",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -19,7 +19,8 @@
       "package": "site.avijit.kharcha",
       "permissions": [
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",

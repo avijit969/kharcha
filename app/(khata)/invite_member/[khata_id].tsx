@@ -194,6 +194,7 @@ const styles = StyleSheet.create({
     },
     searchContainer: {
         flex: 1,
+        paddingVertical: wp(3),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: "flex-start",

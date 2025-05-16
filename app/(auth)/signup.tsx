@@ -10,15 +10,19 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
+import { registerForPushNotificationsAsync } from '@/utils/notification';
 const Signup = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
     const [fullName, setFullName] = useState('');
+    const [expoPushToken, setExpoPushToken] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter()
     const theme = useColorScheme()
+
     const signInWithEmail = async () => {
+        registerForPushNotificationsAsync().then(token => token && setExpoPushToken(token));
         if (!email || !password) {
             ToastAndroid.show('Please fill in all fields', ToastAndroid.SHORT);
             return;
@@ -30,6 +34,7 @@ const Signup = () => {
                 data: {
                     username: username,
                     full_name: fullName,
+                    expo_push_token: expoPushToken
                 }
             }
         });
