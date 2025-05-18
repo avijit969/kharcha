@@ -3,25 +3,16 @@ import { Text, View, Button, Platform } from "react-native";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
+import { supabase } from "@/lib/supabase";
 
 type message = {
   to: string;
   sound: string;
   title: string;
   body: string;
-  data: {
-    someData: string;
-  };
+  data: any;
 };
-async function sendPushNotification(expoPushToken: string, message: message) {
-  message = {
-    to: expoPushToken,
-    sound: "default",
-    title: "Original Title",
-    body: "And here is the body!",
-    data: { someData: "goes here" },
-  };
-
+async function sendPushNotification(message: message) {
   await fetch("https://exp.host/--/api/v2/push/send", {
     method: "POST",
     headers: {
@@ -84,4 +75,32 @@ async function registerForPushNotificationsAsync() {
   }
 }
 
-export { sendPushNotification, registerForPushNotificationsAsync };
+const createNotificationInDB = async (
+  title: string,
+  body: string,
+  data: any,
+  user_id: string,
+  type: string
+) => {
+  const { data: notificationData, error } = await supabase
+    .from("notifications")
+    .insert([
+      {
+        title,
+        body,
+        data,
+        user_id,
+        type,
+      },
+    ])
+    .select();
+  if (error) {
+    console.log(error);
+  }
+  return notificationData;
+};
+export {
+  sendPushNotification,
+  registerForPushNotificationsAsync,
+  createNotificationInDB,
+};

@@ -6,6 +6,8 @@ export interface Member {
   avatar?: string;
   created_at?: string;
   role?: string;
+  isAccepted?: boolean;
+  expo_push_token?: string;
 }
 
 interface MembersState {
@@ -91,10 +93,35 @@ const membersSlice = createSlice({
         }
       }
     },
+    updateAccepted: (
+      state,
+      action: PayloadAction<{
+        khata_id: string;
+        id: string;
+        isAccepted: boolean;
+      }>
+    ) => {
+      const khata = state.khata_members.find(
+        (k) => k.khata_id === action.payload.khata_id
+      );
+      if (khata) {
+        const index = khata.members.findIndex(
+          (member) => member.id === action.payload.id
+        );
+        if (index !== -1) {
+          khata.members[index].isAccepted = action.payload.isAccepted;
+        }
+      }
+    },
   },
 });
 
-export const { setMembers, addMember, removeMember, updateMember } =
-  membersSlice.actions;
+export const {
+  setMembers,
+  addMember,
+  removeMember,
+  updateMember,
+  updateAccepted,
+} = membersSlice.actions;
 
 export default membersSlice.reducer;

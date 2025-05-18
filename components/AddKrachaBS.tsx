@@ -1,43 +1,74 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, ToastAndroid } from 'react-native';
-import React, { useCallback, useState } from 'react';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ToastAndroid } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Dropdown } from 'react-native-element-dropdown';
 import { useColorScheme } from '@/hooks/useColorScheme.web';
 import { ThemedView } from './ThemedView';
 import Button from './Button';
 import { supabase } from '@/lib/supabase';
-import { useDispatch } from 'react-redux';
-import { addKharcha } from '@/features/kharcha/kharchaSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { addKharcha, updateKharcha } from '@/features/kharcha/kharchaSlice';
 import { wp } from '@/helpers/common';
+import { Kharcha } from '@/app/(kharcha)/kharcha/[id]';
+import { RootState } from '@/store/store';
+import { sendPushNotification } from '@/utils/notification';
+import { Member } from '@/features/khata/membersSclice';
 
 interface AddKharchaBSProps {
     bottomSheetModalRef: React.RefObject<BottomSheetModal>;
     khataId: string;
+    operationType: "add" | "edit";
+    data?: Kharcha;
+    khataName?: string;
 }
-
 const kharchaTypes = [
     { label: 'Food', value: 'food' },
     { label: 'Transport', value: 'transport' },
+    { label: 'Rent', value: 'rent' },
+    { label: 'Shopping', value: 'shopping' },
+    { label: 'Groceries', value: 'groceries' },
+    { label: 'Entertainment', value: 'entertainment' },
+    { label: 'Healthcare', value: 'healthcare' },
+    { label: 'Education', value: 'education' },
     { label: 'Utilities', value: 'utilities' },
+    { label: 'Others', value: 'others' },
 ];
 
 const paymentModes = [
     { label: 'Cash', value: 'cash' },
-    { label: 'Card', value: 'card' },
-    { label: 'UPI', value: 'upi' },
+    { label: 'Online', value: 'online' },
 ];
 
-const AddKrachaBS = ({ bottomSheetModalRef, khataId }: AddKharchaBSProps) => {
+const AddKrachaBS = ({ bottomSheetModalRef, khataId, operationType, data, khataName }: AddKharchaBSProps) => {
     const colorScheme = useColorScheme();
     const styles = colorScheme === 'dark' ? darkStyles : lightStyles;
-
     const [amount, setAmount] = useState('');
     const [kharchaName, setKharchaName] = useState('');
-    const [kharchaType, setKharchaType] = useState("");
-    const [paymentMode, setPaymentMode] = useState("");
+    const [kharchaType, setKharchaType] = useState('');
+    const [paymentMode, setPaymentMode] = useState('');
     const dispatch = useDispatch();
+    const members = useSelector((state: RootState) => state.khata_members.khata_members).filter(
+        (member) => member.khata_id === khataId
+    );
+    // console.log("members", members[0].members);
+    const authUser = useSelector((state: RootState) => state.user.user);
+    useEffect(() => {
+        if (operationType === 'edit' && data) {
+            setKharchaName(data.name);
+            setAmount(data.amount.toString());
+            setKharchaType(data.type);
+            setPaymentMode(data.payment_mode);
+        } else {
+            setKharchaName('');
+            setAmount('');
+            setKharchaType('');
+            setPaymentMode('');
+        }
+
+    }, [operationType, data]);
+
     const handleSheetChanges = (index: number) => {
-        console.log('Sheet changed to index', index);
+
     };
 
     const renderBackdrop = useCallback(
@@ -61,34 +92,67 @@ const AddKrachaBS = ({ bottomSheetModalRef, khataId }: AddKharchaBSProps) => {
             setAmount(prev => prev + key);
         }
     };
-
     const keypadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'];
-    // handel kharcha add
+
     const handleAddKharcha = async () => {
-        console.log('Add kharcha', kharchaName, amount, kharchaType, paymentMode);
-        const { data, error } = await supabase.from('kharcha').insert({
+        const { data: insertedData, error } = await supabase.from('kharcha').insert({
             name: kharchaName,
             amount: parseFloat(amount),
             type: kharchaType,
             payment_mode: paymentMode,
             khata_id: khataId,
-            created_by: (await supabase.auth.getUser()).data.user?.id,
+            created_by: authUser?.id,
         }).select("*, users(full_name, avatar)");
 
         if (error) {
-            console.error('Error adding kharcha:', error.message);
             ToastAndroid.show('Error adding kharcha', ToastAndroid.SHORT);
         } else {
             ToastAndroid.show('Kharcha added successfully!', ToastAndroid.SHORT);
-            console.log('Kharcha added:', JSON.stringify(data, null, 2));
-            dispatch(addKharcha({ id: data[0].id, name: kharchaName, amount: parseFloat(amount), type: kharchaType, payment_mode: paymentMode, created_by: data[0].created_by, khata_id: khataId, users: { full_name: data[0].users.full_name, avatar: data[0].users.avatar } }));
+            members[0].members.forEach((member: Member) => {
+                if (member.id != authUser?.id) {
+                    console.log(member.expo_push_token);
+                    console.log(authUser?.id, member.id);
+                    sendPushNotification(
+                        {
+                            title: "New Kharcha Added",
+                            body: `${insertedData[0].users.full_name} added a new kharcha of Rs.${insertedData[0].amount} in ${khataName} for ${insertedData[0].name}`,
+                            data: {
+                                url: `/khataDetails/${khataId}`
+                            },
+                            to: member.expo_push_token || "",
+                            sound: "default",
+                        }
+                    );
+                }
+            })
         }
-        setKharchaName('');
-        setAmount('');
-        setKharchaType("");
-        setPaymentMode("");
-
     };
+
+    const handleEditKharcha = async () => {
+        if (!data?.id) return;
+        const { error } = await supabase.from('kharcha')
+            .update({
+                name: kharchaName,
+                amount: parseFloat(amount),
+                type: kharchaType,
+                payment_mode: paymentMode,
+            })
+            .eq('id', data.id);
+
+        if (error) {
+            ToastAndroid.show('Error updating kharcha', ToastAndroid.SHORT);
+        } else {
+            ToastAndroid.show('Kharcha updated successfully!', ToastAndroid.SHORT);
+            dispatch(updateKharcha({
+                id: data.id,
+                name: kharchaName,
+                amount: parseFloat(amount),
+                type: kharchaType,
+                payment_mode: paymentMode
+            }))
+        }
+    };
+
     return (
         <BottomSheetModal
             ref={bottomSheetModalRef}
@@ -99,21 +163,19 @@ const AddKrachaBS = ({ bottomSheetModalRef, khataId }: AddKharchaBSProps) => {
             handleIndicatorStyle={styles.handelIndicator}
         >
             <BottomSheetView style={styles.contentContainer}>
-                {/* Kharcha Name */}
-                <TextInput
+                <BottomSheetTextInput
                     style={styles.input}
                     placeholder="Kharcha Name"
                     value={kharchaName}
                     onChangeText={setKharchaName}
                     placeholderTextColor={colorScheme === 'dark' ? "white" : "black"}
-
                 />
+
                 <ThemedView style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     backgroundColor: colorScheme === 'dark' ? '#333' : '#fff',
                 }}>
-                    {/* Kharcha Type Dropdown */}
                     <Dropdown
                         style={styles.dropdown}
                         data={kharchaTypes}
@@ -127,7 +189,6 @@ const AddKrachaBS = ({ bottomSheetModalRef, khataId }: AddKharchaBSProps) => {
                         selectedTextStyle={styles.selectedTextStyle}
                     />
 
-                    {/* Payment Mode Dropdown */}
                     <Dropdown
                         style={styles.dropdown}
                         data={paymentModes}
@@ -141,10 +202,9 @@ const AddKrachaBS = ({ bottomSheetModalRef, khataId }: AddKharchaBSProps) => {
                         selectedTextStyle={styles.selectedTextStyle}
                     />
                 </ThemedView>
-                {/* Amount Display */}
+
                 <Text style={styles.amountText}>₹ {amount || '0'}</Text>
 
-                {/* Custom Numeric Keypad */}
                 <View style={styles.keypad}>
                     {keypadKeys.map(key => (
                         <TouchableOpacity
@@ -156,12 +216,18 @@ const AddKrachaBS = ({ bottomSheetModalRef, khataId }: AddKharchaBSProps) => {
                         </TouchableOpacity>
                     ))}
                 </View>
-                {/* Submit Button */}
-                <Button title="Add" onPress={() => {
-                    handleAddKharcha();
-                    bottomSheetModalRef.current?.dismiss();
-                }} />
 
+                <Button
+                    title={operationType === "add" ? "Add" : "Update"}
+                    onPress={async () => {
+                        if (operationType === 'add') {
+                            await handleAddKharcha();
+                        } else {
+                            await handleEditKharcha();
+                        }
+                        bottomSheetModalRef.current?.dismiss();
+                    }}
+                />
             </BottomSheetView>
         </BottomSheetModal>
     );

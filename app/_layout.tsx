@@ -43,11 +43,13 @@ export default function RootLayout() {
     }
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       console.log(notification);
-      redirect(notification);
+      // redirect(notification);
     });
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       console.log(response);
-      redirect(response.notification);
+      setTimeout(() => {
+        redirect(response.notification);
+      }, 1000);
     });
     return () => {
       notificationListener.current &&

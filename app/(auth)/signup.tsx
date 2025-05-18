@@ -16,13 +16,12 @@ const Signup = () => {
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
     const [fullName, setFullName] = useState('');
-    const [expoPushToken, setExpoPushToken] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter()
     const theme = useColorScheme()
 
     const signInWithEmail = async () => {
-        registerForPushNotificationsAsync().then(token => token && setExpoPushToken(token));
+        const expoPushToken = await registerForPushNotificationsAsync();
         if (!email || !password) {
             ToastAndroid.show('Please fill in all fields', ToastAndroid.SHORT);
             return;
@@ -41,7 +40,6 @@ const Signup = () => {
 
         if (error) {
             ToastAndroid.show(error.message, ToastAndroid.SHORT);
-            console.log('error', error);
         } else {
             ToastAndroid.show('Signup Successful', ToastAndroid.SHORT);
             router.replace("/login")

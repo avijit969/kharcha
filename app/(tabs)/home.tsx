@@ -19,6 +19,8 @@ import { supabase } from '@/lib/supabase';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/store/store';
 import { setKhata } from '@/features/khata/khataSlice';
+import { Image } from 'expo-image';
+import { setUser } from '@/features/user/userSclice';
 
 export type KhataData = {
   id: string | number;
@@ -39,10 +41,28 @@ const ShimmerPlaceholder = createShimmerPlaceholder(LinearGradient);
 const Home = () => {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-
+  const user = useSelector((state: RootState) => state.user);
   const [loading, setLoading] = useState<boolean>(true);
   const khata = useSelector((state: RootState) => state.khata);
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const session = await supabase.auth.getSession()
+      const authUser = session.data.session?.user
+      if (authUser) {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authUser.id)
+          .single()
+        if (data) {
+          dispatch(setUser(data))
 
+        }
+      }
+    }
+
+    fetchUserDetails()
+  }, [])
   useEffect(() => {
     const getAllKhata = async () => {
       setLoading(true);
@@ -50,7 +70,6 @@ const Home = () => {
       const userResponse = await supabase.auth.getUser();
 
       if (!userResponse.data.user) {
-        console.error('User not found');
         setLoading(false);
         return;
       }
@@ -59,13 +78,12 @@ const Home = () => {
         .from('members')
         .select(`
           khata:khata_id(id, name, cover_image, description, created_by, created_at, updated_at),
-          users:user_id(full_name, avatar)
+          users:user_id(id,full_name, avatar,expo_push_token)
         `)
         .eq('user_id', userResponse.data.user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching khata data:', error.message);
         setLoading(false);
         return;
       }
@@ -84,16 +102,14 @@ const Home = () => {
             avatar: item.users.avatar,
           },
         }));
-
         dispatch(setKhata(transformedKhata));
-        console.log('khata data', transformedKhata);
       }
 
       setLoading(false);
     };
 
     getAllKhata();
-  }, [dispatch]);
+  }, []);
 
   return (
     <ScreenWrapper>
@@ -104,12 +120,20 @@ const Home = () => {
           </ThemedText>
           <TouchableOpacity onPress={() => router.push('/profile')}>
             <View style={styles.profileIcon}>
-              <Ionicons name="person-outline" size={24} color="black" />
+              {user.user.avatar ? (
+                <Image
+                  source={{ uri: user.user.avatar }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <Ionicons name="person-outline" size={24} color="black" style={{ margin: 10 }} />
+              )}
+
             </View>
           </TouchableOpacity>
         </ThemedView>
 
-        <ThemedText>Your khatas are available here.</ThemedText>
+        <ThemedText style={styles.title}>Your khatas are available here.</ThemedText>
 
         <ScrollView>
           {loading ? (
@@ -128,9 +152,14 @@ const Home = () => {
             khata.map((khataItem) => (
               <KhataCard
                 key={khataItem.id}
-                data={khataItem}
+                data={khataItem as KhataData}
               />
             ))
+          )}
+          {!loading && khata.length === 0 && (
+            <ThemedText style={{ textAlign: 'center', marginTop: hp(20), fontSize: 16, fontWeight: 'bold' }}>
+              You don't have any khata or you are not a member of any khata
+            </ThemedText>
           )}
         </ScrollView>
       </ThemedView>
@@ -149,6 +178,10 @@ const styles = StyleSheet.create({
     gap: hp(2),
     padding: wp(2),
   },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -159,13 +192,17 @@ const styles = StyleSheet.create({
     borderBottomColor: 'gray',
     paddingBottom: 10,
   },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
   headerText: {
     fontSize: 20,
     fontWeight: 'bold',
   },
   profileIcon: {
     backgroundColor: 'white',
-    padding: 8,
     borderRadius: 50,
     borderWidth: 1,
   },

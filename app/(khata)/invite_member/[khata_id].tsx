@@ -5,6 +5,7 @@ import {
     View,
     TouchableOpacity,
     ActivityIndicator,
+    ToastAndroid,
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,12 +17,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { theme } from '@/constants/theme';
 import { wp } from '@/helpers/common';
+import { createNotificationInDB, sendPushNotification } from '@/utils/notification';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
+import { addMember } from '@/features/khata/membersSclice';
 
 type User = {
     id: string;
     full_name: string;
     avatar?: string | null;
     username: string;
+    expo_push_token: string
 };
 
 type Invite = {
@@ -40,6 +46,8 @@ const InviteMember = () => {
     const [invitedUserIds, setInvitedUserIds] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const router = useRouter();
+    const authUser = useSelector((state: RootState) => state.user.user)
+    const dispatch = useDispatch<AppDispatch>();
     useEffect(() => {
         const fetchUsers = async () => {
             if (search.trim() === '') {
@@ -51,7 +59,7 @@ const InviteMember = () => {
 
             const { data, error } = await supabase
                 .from('users')
-                .select('id, full_name, avatar,username')
+                .select('id, full_name, avatar,username,expo_push_token')
                 .ilike('username', `%${search}%`)
                 .neq('id', (await supabase.auth.getUser()).data.user?.id);
 
@@ -78,31 +86,51 @@ const InviteMember = () => {
         return () => clearTimeout(delayDebounceFn);
     }, [search, khata_id]);
 
-    const handleInvite = async (userId: string) => {
+    const handleInvite = async (userId: string, expo_push_token: string, full_name: string) => {
         setInvitingUserId(userId);
         const invited_by_id = (await supabase.auth.getUser()).data.user?.id;
 
-        const { error } = await supabase.from('invites').insert([
+        const { data, error } = await supabase.from('invites').insert([
             {
                 invited_to_id: userId,
                 khata_id,
                 invited_by_id,
             },
-        ]);
+        ])
+            .select("id,khata:khata_id(name)")
 
         if (!error) {
             setInvitedUserIds((prev) => [...prev, userId]);
         } else {
-            console.error('Error inviting user:', error);
+            console.log(error);
+            ToastAndroid.show('Error inviting user', ToastAndroid.SHORT);
         }
-
+        if (data && data[0]?.khata) {
+            dispatch(addMember({ khata_id: data[0]?.khata.id, member: { id: userId, full_name, avatar: authUser?.avatar, isAccepted: false } }))
+            createNotificationInDB(
+                `${authUser?.full_name} invited you to join ${data[0].khata?.name}`,
+                `Hey ${full_name} have been invited to join ${data[0]?.khata.name} by ${authUser?.full_name}`,
+                { url: `/accept_invite/${data[0]?.id}` },
+                userId,
+                'invite'
+            )
+            sendPushNotification({
+                to: expo_push_token,
+                title: `${authUser?.full_name} invited you to join ${data[0]?.khata.name}`,
+                body: `Hey ${full_name} have been invited to join ${data[0]?.khata.name} by ${authUser?.full_name}`,
+                data: {
+                    url: `/accept_invite/${data[0]?.id}`,
+                },
+                sound: 'default'
+            })
+        }
         setInvitingUserId(null);
     };
 
     return (
         <ScreenWrapper>
             <ThemedView style={styles.container}>
-                // back button
+                {/* back button */}
                 <ThemedView style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TouchableOpacity
                         style={styles.backButton}
@@ -149,7 +177,7 @@ const InviteMember = () => {
                                     </ThemedView>
                                     <TouchableOpacity
                                         style={[styles.inviteButton, isInvited && styles.invitedButton]}
-                                        onPress={() => !isInvited && handleInvite(item.id)}
+                                        onPress={() => !isInvited && handleInvite(item.id, item.expo_push_token, item.full_name)}
                                         disabled={isInvited || invitingUserId === item.id}
                                     >
                                         {isInvited ? (

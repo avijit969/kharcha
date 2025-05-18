@@ -1,4 +1,4 @@
-import { StyleSheet, Image, View, ActivityIndicator, Alert, Pressable, ToastAndroid } from 'react-native';
+import { StyleSheet, Image, View, ActivityIndicator, Pressable, ToastAndroid } from 'react-native';
 import React, { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import ScreenWrapper from '@/components/ScreenWrapper';
@@ -12,6 +12,8 @@ import * as FileSystem from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 import { useDispatch } from 'react-redux';
 import { addKhata } from '@/features/khata/khataSlice';
+import Header from '@/components/Header';
+import { wp } from '@/helpers/common';
 
 const Khata = () => {
     const [name, setName] = useState('');
@@ -47,8 +49,6 @@ const Khata = () => {
                     });
 
                 if (error) {
-                    console.error('Error uploading image:', error.message);
-                    Alert.alert('Upload Error', error.message);
                     return;
                 }
 
@@ -57,13 +57,11 @@ const Khata = () => {
                     .getPublicUrl(data.path).data;
 
                 if (!publicUrl) {
-                    Alert.alert('Error', 'Could not get public URL for the image');
                     return;
                 }
 
                 setCoverImage(publicUrl);
             } catch (err) {
-                Alert.alert('Upload Failed', 'An error occurred while uploading the image.');
             } finally {
                 setUploadingImage(false);
             }
@@ -91,7 +89,6 @@ const Khata = () => {
                 .select("*, users(full_name, avatar)");
 
             if (error) {
-                console.error('Error creating khata:', error.message);
                 ToastAndroid.show(error.message, ToastAndroid.SHORT);
             } else {
                 ToastAndroid.show('Khata created successfully!', ToastAndroid.SHORT);
@@ -110,8 +107,7 @@ const Khata = () => {
     return (
         <ScreenWrapper>
             <ThemedView style={styles.container}>
-                <ThemedText style={styles.title}>Create Your New Kharcha Khata</ThemedText>
-
+                <Header name="Create Your New Kharcha Khata" />
                 <InputField
                     placeholder="Enter Khata Name"
                     onChange={setName}
@@ -155,8 +151,8 @@ export default Khata;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
         gap: 12,
+        paddingHorizontal: wp(2),
     },
     title: {
         fontSize: 20,

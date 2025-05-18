@@ -1,13 +1,13 @@
-import { StyleSheet } from 'react-native'
-import React from 'react'
+import { StyleSheet, ToastAndroid } from 'react-native'
+import React, { useEffect } from 'react'
 import ScreenWrapper from '@/components/ScreenWrapper'
 import { ThemedText } from '@/components/ThemedText'
 import { ThemedView } from '@/components/ThemedView'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { RootState } from '@/store/store'
-import { useSelector } from 'react-redux'
+import { AppDispatch, RootState } from '@/store/store'
+import { useDispatch, useSelector } from 'react-redux'
 import { Image } from 'react-native'
-import { Member } from '@/features/khata/membersSclice'
+import { Member, setMembers } from '@/features/khata/membersSclice'
 import Button from '@/components/Button'
 import { supabase } from '@/lib/supabase'
 import Header from '@/components/Header'
@@ -19,29 +19,32 @@ const AllMembers = () => {
     const members = khataMembersState.find(k => k.khata_id === khata_id)?.members || []
 
     const activeMembers = members
-    console.log('members', JSON.stringify(members, null, 2))
     const [invitedMembers, setInvitedMembers] = React.useState<Member[]>([])
     const router = useRouter()
+    const dispatch = useDispatch<AppDispatch>()
     const fetchInvitedMembers = async () => {
         const { data, error } = await supabase
             .from('invites')
-            .select('status, users:invited_to_id(id, full_name, avatar)')
+            .select('status, users:invited_to_id(id, full_name, avatar,expo_push_token)')
             .eq('khata_id', khata_id)
+            .neq('status', 'accepted')
         if (error) {
-            console.error('Error fetching invited members:', error)
+            ToastAndroid.show(error.message, ToastAndroid.SHORT);
         } else {
-            console.log('Invited members:', data)
             setInvitedMembers(data.map((invite: any) => ({
                 id: invite.users.id,
                 full_name: invite.users.full_name,
                 avatar: invite.users.avatar,
                 role: invite.status,
+                expo_push_token: invite.users.expo_push_token
             })))
         }
+        console.log(invitedMembers)
     }
-    React.useEffect(() => {
+
+    useEffect(() => {
         fetchInvitedMembers()
-    }, [])
+    }, [khata_id])
     const renderMember = (member: Member) => (
         <ThemedView key={member.id} style={styles.memberCard}>
             <Image source={{ uri: member.avatar }} style={styles.avatar} />

@@ -3,6 +3,7 @@ import {
     FlatList,
     ActivityIndicator,
     View,
+    ToastAndroid,
 } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -19,12 +20,15 @@ import { hp, wp } from '@/helpers/common';
 import { supabase } from '@/lib/supabase';
 
 import { RootState } from '@/store/store';
-import { setKharcha } from '@/features/kharcha/kharchaSlice';
+import { addKharcha, removeKharcha, setKharcha } from '@/features/kharcha/kharchaSlice';
 import { theme } from '@/constants/theme';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import AddKrachaBS from '@/components/AddKrachaBS';
 import Header from '@/components/Header';
 import { StatusBar } from 'expo-status-bar';
+import { Image } from 'expo-image';
+import ActionModal from '@/components/ActionModal';
+import { RealtimeMessage } from '@supabase/supabase-js';
 
 export type Kharcha = {
     id: string;
@@ -46,43 +50,42 @@ export type Kharcha = {
 const All_kharcha = () => {
     const { id } = useLocalSearchParams<{ id: string }>();
     const dispatch = useDispatch();
-    const [loading, setLoading] = useState(true);
     const themeMode = useColorScheme();
     const isDark = themeMode === 'dark';
     const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [operationType, setOperationType] = useState<"add" | "edit">("add");
+    const [selectedKharcha, setSelectedKharcha] = useState<Kharcha>();
     const khata = useSelector((state: RootState) =>
         state.khata.find((item) => item.id === id)
     );
 
+
+    const openEditModal = (kharchaData: Kharcha) => {
+        setSelectedKharcha(kharchaData);
+        setOperationType("edit");
+        bottomSheetModalRef.current?.present();
+    };
+    // sort kharcha by created_at
     const kharchaList = useSelector((state: RootState) => state.kharcha.kharcha);
     const handlePresentModalPress = useCallback(() => {
         bottomSheetModalRef.current?.present();
     }, []);
-    useEffect(() => {
-        const findAllKharchaByKhataId = async () => {
-            const { data, error } = await supabase
-                .from('kharcha')
-                .select('*, users(full_name, avatar)')
-                .eq('khata_id', id);
-
-            if (error) {
-                console.error('Error fetching kharcha data:', error.message);
-                return;
-            }
-
-            if (data) {
-                dispatch(setKharcha(data));
-            }
-
-            setLoading(false);
-        };
-
-        findAllKharchaByKhataId();
-    }, []);
+    const handledeleteKharcha = async (id: string) => {
+        const { error } = await supabase
+            .from('kharcha')
+            .delete()
+            .eq('id', selectedKharcha?.id);
+        if (error) {
+            console.log(error);
+        }
+        dispatch(removeKharcha({ id }));
+        setDeleteModalVisible(false);
+        ToastAndroid.show('Kharcha deleted successfully!', ToastAndroid.SHORT);
+    };
 
     const renderItem = ({ item }: { item: Kharcha }) => (
-        <ThemedView style={[styles.card, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
+        <ThemedView style={[styles.card]}>
             <ThemedView style={styles.cardRow}>
                 <ThemedView style={styles.rowLeft}>
                     <Ionicons
@@ -98,6 +101,17 @@ const All_kharcha = () => {
                     <ThemedText style={styles.amount}>
                         ₹ {new Intl.NumberFormat('en-IN').format(item.amount)}
                     </ThemedText>
+                    {/* Delete Button icon */}
+                    <Ionicons
+                        name="trash-outline"
+                        size={18}
+                        color={"red"}
+                        onPress={() => {
+                            setDeleteModalVisible(true);
+                            setSelectedKharcha(item);
+                        }}
+                        style={{ marginLeft: 10 }}
+                    />
                 </ThemedView>
             </ThemedView>
 
@@ -122,14 +136,23 @@ const All_kharcha = () => {
                 </ThemedView>
 
                 <ThemedView style={styles.rowRight}>
-                    <Ionicons
-                        name="person-circle-outline"
-                        size={18}
-                        color={isDark ? '#ccc' : '#666'}
-                    />
+                    {item.users.avatar ? <Image source={{ uri: item.users.avatar }} style={{ width: 24, height: 24, borderRadius: 12 }} /> :
+                        <Ionicons
+                            name="person-circle-outline"
+                            size={18}
+                            color={isDark ? '#ccc' : '#666'}
+                        />}
                     <ThemedText style={{ fontSize: 13, color: isDark ? '#ccc' : '#555' }}>
-                        Paid by {item.users.full_name}
+                        Paid By {item.users.full_name}
                     </ThemedText>
+                    {/* Edit Button icon */}
+                    <Ionicons
+                        name="create-outline"
+                        size={18}
+                        color={"#007aff"}
+                        onPress={() => openEditModal(item)}
+                        style={{ marginLeft: 10 }}
+                    />
                 </ThemedView>
             </ThemedView>
         </ThemedView>
@@ -138,7 +161,7 @@ const All_kharcha = () => {
     return (
         <ScreenWrapper>
             <ThemedView style={{ flex: 1, paddingBottom: 20 }}>
-                <StatusBar style="inverted" />
+                <StatusBar style="dark" />
                 <Header name={"All Kharcha"} />
                 <ThemedView style={styles.container}>
                     <ThemedText
@@ -150,19 +173,17 @@ const All_kharcha = () => {
                         💰 {khata?.name}
                     </ThemedText>
 
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#007aff" />
-                    ) : (
-                        <FlatList
-                            data={kharchaList}
-                            keyExtractor={(item) => item.id}
-                            renderItem={renderItem}
-                            contentContainerStyle={styles.listContent}
-                            showsVerticalScrollIndicator={false}
-                        />
-                    )}
 
-                    {!loading && kharchaList.length === 0 && (
+                    <FlatList
+                        data={kharchaList}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderItem}
+                        contentContainerStyle={styles.listContent}
+                        showsVerticalScrollIndicator={false}
+                    />
+
+
+                    {kharchaList.length === 0 && (
                         <ThemedText
                             style={{
                                 textAlign: 'center',
@@ -189,7 +210,28 @@ const All_kharcha = () => {
                 />
 
             </ThemedView>
-            <AddKrachaBS bottomSheetModalRef={bottomSheetModalRef} khataId={id} />
+            <AddKrachaBS
+                bottomSheetModalRef={bottomSheetModalRef}
+                khataId={id}
+                operationType={operationType}
+                data={selectedKharcha}
+                khataName={khata?.name}
+            />
+            <ActionModal
+                visible={deleteModalVisible}
+                title="Delete Kharcha"
+                message="Are you sure you want to delete this kharcha?"
+                confirmText="Delete"
+                cancelText="Cancel"
+                onConfirm={() => {
+                    if (!selectedKharcha) return;
+                    handledeleteKharcha(selectedKharcha.id);
+                    setDeleteModalVisible(false);
+                }}
+                onCancel={() => {
+                    setDeleteModalVisible(false);
+                }}
+            />
         </ScreenWrapper>
     );
 };

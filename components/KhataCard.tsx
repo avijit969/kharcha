@@ -20,10 +20,10 @@ const KhataCard: React.FC<Props> = ({ data }) => {
     const [membersCount, setMembersCount] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-
+    const [KhataCreatedBy, setKhataCreatedBy] = useState<string | null>(null);
     const router = useRouter();
     const dispatch = useDispatch();
-
+    const khataMembersOfKhata = useSelector((state: RootState) => state.khata_members.khata_members).filter(k => k.khata_id === data.id);
     const getMembers = async () => {
         const { data: khataMembers, error } = await supabase
             .from('members')
@@ -55,8 +55,25 @@ const KhataCard: React.FC<Props> = ({ data }) => {
 
         setLoading(false);
     };
+    const getKhataDetials = async (id: string) => {
+        const { data, error } = await supabase
+            .from('khata')
+            .select('id, name,users(id, full_name, avatar)')
+            .eq('id', id)
+            .single();
+        if (error) {
+            setError(error.message);
+            return;
+        }
+        console.log(data);
+        if (data.users) {
+            setKhataCreatedBy(data.users.full_name);
+            return;
+        }
+    }
 
     useEffect(() => {
+        getKhataDetials(data.id as string);
         getMembers();
     }, []);
 
@@ -94,7 +111,7 @@ const KhataCard: React.FC<Props> = ({ data }) => {
                         <ThemedView style={styles.iconRow}>
                             <Ionicons name="create" size={15} color="white" />
                             <ThemedText style={styles.infoText}>
-                                {data.users.full_name}
+                                {KhataCreatedBy}
                             </ThemedText>
                         </ThemedView>
                     </ThemedView>

@@ -8,13 +8,14 @@ import { wp } from '@/helpers/common'
 import { useColorScheme } from '@/hooks/useColorScheme.web'
 import { useRouter } from 'expo-router'
 
-const Header = ({ name }: { name: string }) => {
+const Header = ({ name, right }: { name: string, right?: React.ReactNode }) => {
     const theme = useColorScheme()
     const router = useRouter()
     return (
         <ThemedView style={styles.header}>
             <Ionicons name="arrow-back" size={24} color={theme === 'dark' ? 'white' : 'black'} style={[styles.backBtnIcon, { backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }]} onPress={() => router.back()} />
             <ThemedText style={styles.title}>{name}</ThemedText>
+            {right && right}
         </ThemedView>
     )
 }
