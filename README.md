@@ -1,50 +1,59 @@
-# Welcome to your Expo app 👋
+# 💸 Kharcha - Expense Tracking Made Simple
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Kharcha** is a smart and simple expense tracking app that helps you manage group expenses effortlessly. Whether you're planning a trip, managing roommates, or organizing an event — **Kharcha** keeps your finances transparent and under control.
 
-## Get started
+> 🧾 _“Kharcha” means **expense** and “Khata” means **group of expenses** in Odia._
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## ✨ Features
 
-2. Start the app
+### 🗂️ Khata Management
 
-   ```bash
-    npx expo start
-   ```
+- ➕ Create a new **Khata** (group of expenses)
+- 👥 Add and manage **members** in a Khata
+- 📋 View all your **Khatas**
+- 👀 View all **members** of a Khata
 
-In the output, you'll find options to open the app in a
+### 💰 Kharcha Management
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- ➕ Add a new **Kharcha** (expense)
+- ✏️ Update an existing Kharcha
+- ❌ Delete a Kharcha
+- 📃 View all **Kharchas**
+- 🧾 View all **expenses** in a Khata
+- 👤 View all **expenses** made by a member
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### 🔔 Notifications
 
-## Get a fresh project
+- 🚨 Send **notifications** to all members of a Khata when a new expense is added
+- 📥 Notify a **specific member** when an expense is added for them
+- ✉️ Send **invitation notifications** to join a Khata
 
-When you're ready, run:
+---
 
-```bash
-npm run reset-project
-```
+## 🧠 Why Kharcha?
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+✅ Easy-to-use interface  
+✅ Perfect for group trips, events, roommates, or family budgets  
+✅ Keep everyone in the loop with smart notifications  
+✅ Stay transparent and organized
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## 📱 Coming Soon
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Dashboard & analytics 📊
+- Settlement & payment tracking 💵
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 🚀 Get Started
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Start using Kharcha today and take the headache out of splitting expenses!
+
+---
+
+## 🙌 Built with Love
+
+Crafted with ❤️ to bring clarity and ease to shared spending.
