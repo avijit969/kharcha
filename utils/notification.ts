@@ -13,7 +13,7 @@ type message = {
   data: any;
 };
 async function sendPushNotification(message: message) {
-  await fetch("https://exp.host/--/api/v2/push/send", {
+  const response = await fetch("https://exp.host/--/api/v2/push/send", {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -22,6 +22,7 @@ async function sendPushNotification(message: message) {
     },
     body: JSON.stringify(message),
   });
+  console.log(response);
 }
 
 function handleRegistrationError(errorMessage: string) {
@@ -42,6 +43,7 @@ async function registerForPushNotificationsAsync() {
   if (Device.isDevice) {
     const { status: existingStatus } =
       await Notifications.getPermissionsAsync();
+    console.log(existingStatus);
     let finalStatus = existingStatus;
     if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -75,6 +77,15 @@ async function registerForPushNotificationsAsync() {
   }
 }
 
+/**
+ * Creates a new notification in the DB.
+ * @param {string} title - The title of the notification.
+ * @param {string} body - The body of the notification.
+ * @param {any} data - Any additional data to be stored with the notification.
+ * @param {string} user_id - The id of the user who should receive the notification.
+ * @param {string} type - The type of notification (e.g. "invite", "reminder", etc.).
+ * @returns {Promise<{ id: string }>} - The new notification with its id.
+ */
 const createNotificationInDB = async (
   title: string,
   body: string,

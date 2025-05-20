@@ -39,7 +39,6 @@ const AllMembers = () => {
                 expo_push_token: invite.users.expo_push_token
             })))
         }
-        console.log(invitedMembers)
     }
 
     useEffect(() => {

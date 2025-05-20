@@ -14,6 +14,7 @@ import { useDispatch } from 'react-redux';
 import { addKhata } from '@/features/khata/khataSlice';
 import Header from '@/components/Header';
 import { wp } from '@/helpers/common';
+import { useRouter } from 'expo-router';
 
 const Khata = () => {
     const [name, setName] = useState('');
@@ -22,6 +23,7 @@ const Khata = () => {
     const [loading, setLoading] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const dispatch = useDispatch();
+    const router = useRouter();
     const pickImage = async () => {
 
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -73,9 +75,7 @@ const Khata = () => {
             ToastAndroid.show('Please fill in all fields', ToastAndroid.SHORT);
             return;
         }
-
         setLoading(true);
-
         try {
             const userId = (await supabase.auth.getUser()).data.user?.id;
             const { data, error } = await supabase.from('khata').insert([
@@ -86,16 +86,18 @@ const Khata = () => {
                     created_by: userId,
                 },
             ])
-                .select("*, users(full_name, avatar)");
+                .select("*, users(full_name, avatar)")
+                .single();
 
             if (error) {
                 ToastAndroid.show(error.message, ToastAndroid.SHORT);
             } else {
                 ToastAndroid.show('Khata created successfully!', ToastAndroid.SHORT);
-                dispatch(addKhata(data[0]));
+                dispatch(addKhata(data));
                 setName('');
                 setDescription('');
                 setCoverImage(null);
+                router.back();
             }
         } catch (err) {
             ToastAndroid.show('An error occurred while creating the khata.', ToastAndroid.SHORT);

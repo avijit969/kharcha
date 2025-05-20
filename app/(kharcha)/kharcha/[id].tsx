@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import ScreenWrapper from '@/components/ScreenWrapper';
@@ -59,7 +59,7 @@ const All_kharcha = () => {
     const khata = useSelector((state: RootState) =>
         state.khata.find((item) => item.id === id)
     );
-
+    const router = useRouter();
 
     const openEditModal = (kharchaData: Kharcha) => {
         setSelectedKharcha(kharchaData);
@@ -77,7 +77,7 @@ const All_kharcha = () => {
             .delete()
             .eq('id', selectedKharcha?.id);
         if (error) {
-            console.log(error);
+            ToastAndroid.show(error.message, ToastAndroid.SHORT);
         }
         dispatch(removeKharcha({ id }));
         setDeleteModalVisible(false);
@@ -162,7 +162,17 @@ const All_kharcha = () => {
         <ScreenWrapper>
             <ThemedView style={{ flex: 1, paddingBottom: 20 }}>
                 <StatusBar style="dark" />
-                <Header name={"All Kharcha"} />
+                <Header name={"All Kharcha"} right={
+                    <Ionicons
+                        name="bar-chart-outline"
+                        size={24}
+                        color={isDark ? '#f5f5f5' : '#1e1e1e'}
+                        onPress={() => {
+                            router.push(`/dashboard/${khata?.id}` as any);
+                        }}
+                        style={[{ marginRight: 10 }]}
+                    />
+                } />
                 <ThemedView style={styles.container}>
                     <ThemedText
                         style={[
@@ -172,29 +182,24 @@ const All_kharcha = () => {
                     >
                         💰 {khata?.name}
                     </ThemedText>
-
-
                     <FlatList
                         data={kharchaList}
                         keyExtractor={(item) => item.id}
                         renderItem={renderItem}
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
+                        ListEmptyComponent={() => (
+                            <ThemedText
+                                style={{
+                                    textAlign: 'center',
+                                    fontSize: 16,
+                                    color: isDark ? '#aaa' : '#555',
+                                }}
+                            >
+                                No kharcha found for this khata.
+                            </ThemedText>
+                        )}
                     />
-
-
-                    {kharchaList.length === 0 && (
-                        <ThemedText
-                            style={{
-                                textAlign: 'center',
-                                alignSelf: 'center',
-                                fontSize: 16,
-                                color: isDark ? '#aaa' : '#555',
-                            }}
-                        >
-                            No kharcha found for this khata.
-                        </ThemedText>
-                    )}
                 </ThemedView>
                 <Button
                     title="Add New Kharcha"

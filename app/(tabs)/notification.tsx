@@ -51,19 +51,19 @@ const NotificationScreen = () => {
     return (
         <ScreenWrapper>
             <ThemedView style={styles.container}>
-                <Header name="Notifications" right={<Ionicons name="trash" size={24} color={"red"}
-                    style={{ marginLeft: wp(40) }}
+                <Header name="Notifications" right={notifications.length > 0 && <Ionicons name="trash" size={24} color={"red"}
                     onPress={() => {
                         setDeleteModalVisible(true);
                     }}
                 />} />
-
-                <FlatList
+                {notifications.length === 0 ? (
+                    <ThemedText style={styles.emptyText}>You have not recive any notification yet</ThemedText>
+                ) : <FlatList
                     data={notifications}
                     renderItem={renderNotification}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContainer}
-                />
+                />}
             </ThemedView>
             <ActionModal
                 title='Delete All Notification'
@@ -88,6 +88,12 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 16,
+    },
+    emptyText: {
+        marginTop: hp(10),
+        fontSize: 16,
+        color: 'gray',
+        textAlign: 'center',
     },
     listContainer: {
         gap: 12,

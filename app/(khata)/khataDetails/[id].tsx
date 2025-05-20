@@ -6,7 +6,7 @@ import { ThemedView } from '@/components/ThemedView'
 import { ThemedText } from '@/components/ThemedText'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/store/store'
-import { hp } from '@/helpers/common'
+import { hp, wp } from '@/helpers/common'
 import { Image } from 'expo-image'
 import { theme as appTheme } from '@/constants/theme'
 import { Ionicons, MaterialIcons } from '@expo/vector-icons'
@@ -17,7 +17,13 @@ import Header from '@/components/Header'
 import { addKharcha, setKharcha } from '@/features/kharcha/kharchaSlice'
 import { StatusBar } from 'expo-status-bar'
 import { setMembers } from '@/features/khata/membersSclice'
-
+import * as DropdownMenu from 'zeego/dropdown-menu'
+import ActionModal from '@/components/ActionModal'
+import { removeKhata } from '@/features/khata/khataSlice'
+import EditKhataActionModal from '@/components/EditKhataActionModal'
+import { createShimmerPlaceholder } from 'react-native-shimmer-placeholder'
+import { LinearGradient } from 'expo-linear-gradient'
+const ShimmerPlaceholder = createShimmerPlaceholder(LinearGradient);
 const KhataDetailes = () => {
     const { id } = useLocalSearchParams()
     const khata = useSelector((state: RootState) => state.khata).filter((item) => item.id === id)[0]
@@ -26,7 +32,8 @@ const KhataDetailes = () => {
     const dispatch = useDispatch()
     const router = useRouter()
     const kharcha = useSelector((state: RootState) => state.kharcha.kharcha)
-
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
     const [loading, setLoading] = useState(false)
     useEffect(() => {
         const findAllKharchaByKhataId = async () => {
@@ -97,6 +104,7 @@ const KhataDetailes = () => {
     }, [id]);
     useEffect(() => {
         const getAllMembersOfKhata = async () => {
+            setLoading(true);
             const { data, error } = await supabase
                 .from('members')
                 .select('*, users(id,full_name, avatar,expo_push_token)')
@@ -105,7 +113,6 @@ const KhataDetailes = () => {
                 ToastAndroid.show(error.message, ToastAndroid.SHORT);
             }
             if (data) {
-                console.log(JSON.stringify(data, null, 2))
                 const formatedMembers = data.map((member: any) => ({
                     id: member.users.id,
                     full_name: member.users.full_name,
@@ -115,60 +122,128 @@ const KhataDetailes = () => {
                 }))
                 dispatch(setMembers({ khata_id: id as string, members: formatedMembers }))
             }
+            setLoading(false);
         }
         getAllMembersOfKhata()
     }, [id])
+
+    const deleteKhata = async (id: string) => {
+        function extractImagePath(url: string): string {
+            const keyword = 'khata_cover_image';
+            const index = url.indexOf(keyword);
+            if (index === -1) return '';
+            return url.substring(index);
+        }
+
+        // 1. delete the cover_image from supabase storage
+        const { data, error: storageError } = await supabase
+            .storage
+            .from('kharcha')
+            .remove([extractImagePath(khata.cover_image as string)]);
+        if (storageError) {
+            ToastAndroid.show(storageError.message, ToastAndroid.SHORT);
+        }
+        // 2. delete the khata from supabase database
+        const { error } = await supabase
+            .from('khata')
+            .delete()
+            .eq('id', id);
+        if (error) {
+            ToastAndroid.show(error.message, ToastAndroid.SHORT);
+        }
+        ToastAndroid.show('Khata deleted successfully!', ToastAndroid.SHORT);
+        dispatch(removeKhata({ id: id as string }));
+        router.back();
+    }
     return (
         <ScreenWrapper>
-            <ThemedView style={[styles.container, { backgroundColor: isDark ? '#121212' : '#f2f2f2' }]}>
+            <ThemedView style={styles.container}>
                 <StatusBar style="dark" />
+                <Header name={khata.name} right={
+                    <View >
+                        <DropdownMenu.Root >
+                            <DropdownMenu.Trigger>
+                                <Ionicons name="ellipsis-vertical" size={24} color={isDark ? '#fff' : '#333'} />
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Content
+                                color='black'
+                            >
+                                <DropdownMenu.Item
+                                    key='edit'
+                                    onSelect={() => {
+                                        setShowEditModal(true)
+                                    }}
+                                >
+                                    <DropdownMenu.ItemTitle
+                                    >Edit</DropdownMenu.ItemTitle>
+                                </DropdownMenu.Item>
+                                <DropdownMenu.Separator />
+                                <DropdownMenu.Item
+                                    key='delete'
+                                    onSelect={() => {
+                                        setShowDeleteModal(true)
+                                    }}
+                                >
+                                    <DropdownMenu.ItemTitle
+                                    >Delete</DropdownMenu.ItemTitle>
+                                </DropdownMenu.Item>
 
-                <Header name={khata.name} />
+                            </DropdownMenu.Content>
+                        </DropdownMenu.Root>
+                    </View>
+
+                } />
                 {/* Cover Image */}
-                <Image
-                    source={{ uri: khata.cover_image }}
-                    style={styles.coverImage}
-                    contentFit="cover"
-                    transition={1000}
-                />
+                {loading ?
+                    <ThemedView>
+                        <ShimmerPlaceholder style={styles.coverImage} />
+                        <ShimmerPlaceholder style={{ height: hp(14), width: '100%', marginTop: hp(2), borderRadius: 20 }} />
+                    </ThemedView>
+                    : <View>
+                        <Image
+                            source={{ uri: khata.cover_image }}
+                            style={styles.coverImage}
+                            contentFit="cover"
+                            transition={1000}
+                        />
 
-                {/* Title & Description */}
-                <View style={styles.textBlock}>
-                    <ThemedText style={[styles.description, { color: isDark ? '#aaa' : '#555' }]}>
-                        {khata.description}
-                    </ThemedText>
-                </View>
+                        {/* Title & Description */}
+                        <View style={styles.textBlock}>
+                            <ThemedText style={[styles.description, { color: isDark ? '#aaa' : '#555' }]}>
+                                {khata.description}
+                            </ThemedText>
+                        </View>
 
-                {/* Info Card */}
-                <View style={[
-                    styles.infoCard,
-                    {
-                        backgroundColor: isDark ? '#1e1e1e' : '#fff',
-                        shadowColor: isDark ? '#000' : '#aaa',
-                    }
-                ]}>
-                    <View style={styles.infoRow}>
-                        <Ionicons name="person-outline" size={20} color={isDark ? '#fff' : '#333'} />
-                        <ThemedText style={[styles.infoLabel, { color: isDark ? '#fff' : '#222' }]}>Created by</ThemedText>
-                        <ThemedText style={[styles.infoValue, { color: isDark ? '#eee' : '#555' }]}>{khata.users.full_name}</ThemedText>
-                    </View>
+                        {/* Info Card */}
+                        <View style={[
+                            styles.infoCard,
+                            {
+                                backgroundColor: isDark ? '#1e1e1e' : '#fff',
+                                shadowColor: isDark ? '#000' : '#aaa',
+                            }
+                        ]}>
+                            <View style={styles.infoRow}>
+                                <Ionicons name="person-outline" size={20} color={isDark ? '#fff' : '#333'} />
+                                <ThemedText style={[styles.infoLabel, { color: isDark ? '#fff' : '#222' }]}>Created by</ThemedText>
+                                <ThemedText style={[styles.infoValue, { color: isDark ? '#eee' : '#555' }]}>{khata.users.full_name}</ThemedText>
+                            </View>
 
-                    {/* Clickable Members */}
-                    <TouchableOpacity
-                        style={styles.infoRow}
-                        onPress={() => router.push(`/(khata)/members/${id}` as any)}>
-                        <Ionicons name="people-outline" size={20} color={isDark ? '#fff' : '#333'} />
-                        <ThemedText style={[styles.infoLabel, { color: isDark ? '#fff' : '#222' }]}>Members</ThemedText>
-                        <Ionicons name="chevron-forward" size={24} color={isDark ? '#fff' : '#333'} />
-                    </TouchableOpacity>
+                            {/* Clickable Members */}
+                            <TouchableOpacity
+                                style={styles.infoRow}
+                                onPress={() => router.push(`/(khata)/members/${id}` as any)}>
+                                <Ionicons name="people-outline" size={20} color={isDark ? '#fff' : '#333'} />
+                                <ThemedText style={[styles.infoLabel, { color: isDark ? '#fff' : '#222' }]}>Members</ThemedText>
+                                <Ionicons name="chevron-forward" size={24} color={isDark ? '#fff' : '#333'} />
+                            </TouchableOpacity>
 
-                    <View style={styles.infoRow}>
-                        <MaterialIcons name="attach-money" size={20} color={isDark ? '#fff' : '#333'} />
-                        <ThemedText style={[styles.infoLabel, { color: isDark ? '#fff' : '#222' }]}>Total Khara Heichi</ThemedText>
-                        <ThemedText style={[styles.infoValue, { color: isDark ? '#eee' : '#555' }]}>{kharcha.map((item) => item.amount).reduce((a, b) => a + b, 0).toFixed(2)}</ThemedText>
-                    </View>
-                </View>
-
+                            <View style={styles.infoRow}>
+                                <MaterialIcons name="attach-money" size={20} color={isDark ? '#fff' : '#333'} />
+                                <ThemedText style={[styles.infoLabel, { color: isDark ? '#fff' : '#222' }]}>Total Khara Heichi</ThemedText>
+                                <ThemedText style={[styles.infoValue, { color: isDark ? '#eee' : '#555' }]}>{kharcha.map((item) => item.amount).reduce((a, b) => a + b, 0).toFixed(2) + ' ₹'}</ThemedText>
+                            </View>
+                        </View>
+                    </View>}
                 {/* Buttons */}
                 <View style={styles.buttonRow}>
                     <Button
@@ -185,6 +260,8 @@ const KhataDetailes = () => {
                     />
                 </View>
             </ThemedView>
+            <ActionModal title='Delete Khata' message='Are you sure you want to delete this khata?' visible={showDeleteModal} onConfirm={() => deleteKhata(id as string)} onCancel={() => setShowDeleteModal(false)} confirmText='Delete' />
+            <EditKhataActionModal visible={showEditModal} khataDetails={khata as any} onClose={() => setShowEditModal(false)} />
         </ScreenWrapper >
     )
 }
@@ -211,6 +288,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     description: {
+        marginVertical: 5,
         fontSize: 16,
     },
     infoCard: {

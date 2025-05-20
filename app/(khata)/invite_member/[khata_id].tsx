@@ -21,6 +21,7 @@ import { createNotificationInDB, sendPushNotification } from '@/utils/notificati
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store/store';
 import { addMember } from '@/features/khata/membersSclice';
+import { useColorScheme } from '@/hooks/useColorScheme.web';
 
 type User = {
     id: string;
@@ -48,6 +49,7 @@ const InviteMember = () => {
     const router = useRouter();
     const authUser = useSelector((state: RootState) => state.user.user)
     const dispatch = useDispatch<AppDispatch>();
+    const theme = useColorScheme()
     useEffect(() => {
         const fetchUsers = async () => {
             if (search.trim() === '') {
@@ -102,7 +104,6 @@ const InviteMember = () => {
         if (!error) {
             setInvitedUserIds((prev) => [...prev, userId]);
         } else {
-            console.log(error);
             ToastAndroid.show('Error inviting user', ToastAndroid.SHORT);
         }
         if (data && data[0]?.khata) {
@@ -136,12 +137,12 @@ const InviteMember = () => {
                         style={styles.backButton}
                         onPress={() => router.back()}
                     >
-                        <Ionicons name="arrow-back-outline" size={30} color="white" />
+                        <Ionicons name="arrow-back-outline" size={30} color={theme === 'dark' ? 'white' : 'black'} />
                     </TouchableOpacity>
-                    <ThemedView style={styles.searchContainer}>
-                        <Ionicons name="search-outline" size={24} color="white" />
+                    <ThemedView style={[styles.searchContainer, { backgroundColor: theme === 'dark' ? '#333' : 'whitee', borderColor: theme === 'dark' ? '#333' : 'black', borderWidth: 1 }]}>
+                        <Ionicons name="search-outline" size={24} color={theme === 'dark' ? 'white' : 'black'} />
                         <TextInput
-                            style={styles.searchInput}
+                            style={[styles.searchInput, { color: theme === 'dark' ? 'white' : 'black' }]}
                             placeholder="Search users..."
                             placeholderTextColor="#999"
                             value={search}

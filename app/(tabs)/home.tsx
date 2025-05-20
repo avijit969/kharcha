@@ -191,6 +191,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'gray',
     paddingBottom: 10,
+    marginHorizontal: wp(1)
   },
   avatar: {
     width: 40,
@@ -204,6 +205,15 @@ const styles = StyleSheet.create({
   profileIcon: {
     backgroundColor: 'white',
     borderRadius: 50,
-    borderWidth: 1,
+    borderWidth: 2,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
 });

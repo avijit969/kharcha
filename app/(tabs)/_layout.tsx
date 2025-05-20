@@ -2,7 +2,6 @@ import { Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -11,11 +10,10 @@ import { wp } from '@/helpers/common';
 import { theme } from '@/constants/theme';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
-import { ThemedView } from '@/components/ThemedView';
 import { View } from 'react-native';
 import { Text } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { setNotifications } from '@/features/notification/notificationSclice';
+import { addNotification, setNotifications } from '@/features/notification/notificationSclice';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -25,13 +23,26 @@ export default function TabLayout() {
   useEffect(() => {
     const loadNotifications = async () => {
       const { data, error } = await supabase.from('notifications').select('*').eq('user_id', authUser.id);
-      console.log("notifications", data);
       if (error) {
-        console.log("erroe", error);
       }
       dispatch(setNotifications(data));
     };
     loadNotifications();
+    // load realtime notifications
+
+    const channels = supabase.channel('custom-filter-channel')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${authUser?.id}` },
+        (payload) => {
+          dispatch(addNotification(payload.new));
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channels.unsubscribe()
+    }
   }, [authUser?.id]);
   const noficationCount = useSelector((state: RootState) => state.notification.notifications)?.filter((notification) => !notification.is_viewed).length
   return (

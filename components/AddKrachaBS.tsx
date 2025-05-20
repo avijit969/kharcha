@@ -11,7 +11,7 @@ import { addKharcha, updateKharcha } from '@/features/kharcha/kharchaSlice';
 import { wp } from '@/helpers/common';
 import { Kharcha } from '@/app/(kharcha)/kharcha/[id]';
 import { RootState } from '@/store/store';
-import { sendPushNotification } from '@/utils/notification';
+import { createNotificationInDB, sendPushNotification } from '@/utils/notification';
 import { Member } from '@/features/khata/membersSclice';
 
 interface AddKharchaBSProps {
@@ -50,7 +50,6 @@ const AddKrachaBS = ({ bottomSheetModalRef, khataId, operationType, data, khataN
     const members = useSelector((state: RootState) => state.khata_members.khata_members).filter(
         (member) => member.khata_id === khataId
     );
-    // console.log("members", members[0].members);
     const authUser = useSelector((state: RootState) => state.user.user);
     useEffect(() => {
         if (operationType === 'edit' && data) {
@@ -110,11 +109,19 @@ const AddKrachaBS = ({ bottomSheetModalRef, khataId, operationType, data, khataN
             ToastAndroid.show('Kharcha added successfully!', ToastAndroid.SHORT);
             members[0].members.forEach((member: Member) => {
                 if (member.id != authUser?.id) {
-                    console.log(member.expo_push_token);
-                    console.log(authUser?.id, member.id);
+                    createNotificationInDB(
+                        `New Kharcha Added in ${khataName}`,
+                        `${insertedData[0].users.full_name} added a new kharcha of Rs.${insertedData[0].amount} in ${khataName} for ${insertedData[0].name}`,
+                        {
+                            url: `/khataDetails/${khataId}`,
+                            member_id: member.id
+                        },
+                        member.id,
+                        "new_kharcha"
+                    );
                     sendPushNotification(
                         {
-                            title: "New Kharcha Added",
+                            title: `New Kharcha Added in ${khataName}`,
                             body: `${insertedData[0].users.full_name} added a new kharcha of Rs.${insertedData[0].amount} in ${khataName} for ${insertedData[0].name}`,
                             data: {
                                 url: `/khataDetails/${khataId}`
@@ -123,6 +130,7 @@ const AddKrachaBS = ({ bottomSheetModalRef, khataId, operationType, data, khataN
                             sound: "default",
                         }
                     );
+
                 }
             })
         }

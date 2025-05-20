@@ -11,6 +11,7 @@ import { wp } from '@/helpers/common';
 import { useDispatch, useSelector } from 'react-redux';
 import { Member, setMembers } from '@/features/khata/membersSclice';
 import { RootState } from '@/store/store';
+import { useColorScheme } from '@/hooks/useColorScheme.web';
 
 type Props = {
     data: KhataData;
@@ -23,6 +24,7 @@ const KhataCard: React.FC<Props> = ({ data }) => {
     const [KhataCreatedBy, setKhataCreatedBy] = useState<string | null>(null);
     const router = useRouter();
     const dispatch = useDispatch();
+    const theme = useColorScheme();
     const khataMembersOfKhata = useSelector((state: RootState) => state.khata_members.khata_members).filter(k => k.khata_id === data.id);
     const getMembers = async () => {
         const { data: khataMembers, error } = await supabase
@@ -94,7 +96,7 @@ const KhataCard: React.FC<Props> = ({ data }) => {
 
                 <ThemedView style={styles.infoRow}>
                     <ThemedView style={styles.iconRow}>
-                        <Ionicons name="person-circle-outline" size={24} color="white" />
+                        <Ionicons name="person-circle-outline" size={24} color={theme === 'dark' ? 'white' : 'black'} />
                         <ThemedText style={styles.infoText}>
                             {loading ? 'Loading...' : `${membersCount} members`}
                         </ThemedText>
@@ -102,14 +104,14 @@ const KhataCard: React.FC<Props> = ({ data }) => {
 
                     <ThemedView>
                         <ThemedView style={styles.iconRow}>
-                            <Ionicons name="calendar-outline" size={15} color="white" />
+                            <Ionicons name="calendar-outline" size={15} color={theme === 'dark' ? 'white' : 'black'} />
                             <ThemedText style={styles.infoText}>
                                 {new Date(data.created_at).toLocaleDateString()}
                             </ThemedText>
                         </ThemedView>
 
                         <ThemedView style={styles.iconRow}>
-                            <Ionicons name="create" size={15} color="white" />
+                            <Ionicons name="create" size={15} color={theme === 'dark' ? 'white' : 'black'} />
                             <ThemedText style={styles.infoText}>
                                 {KhataCreatedBy}
                             </ThemedText>

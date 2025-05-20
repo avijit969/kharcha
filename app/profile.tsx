@@ -21,6 +21,12 @@ import { useRouter } from 'expo-router'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/store/store'
 import { updateUser } from '@/features/user/userSclice'
+import { useColorScheme } from '@/hooks/useColorScheme.web'
+import Header from '@/components/Header'
+import { Ionicons } from '@expo/vector-icons'
+import { wp } from '@/helpers/common'
+import ActionModal from '@/components/ActionModal'
+import { StatusBar } from 'expo-status-bar'
 export interface User {
     id: string
     email: string
@@ -34,7 +40,8 @@ const Profile = () => {
     const [userInput, setUserInput] = useState<User>(user)
     const [updating, setUpdating] = useState(false)
     const [uploading, setUploading] = useState(false)
-
+    const [isShwownLogoutModal, setIsShownLogoutModal] = useState(false)
+    const Theme = useColorScheme()
     const dispatch = useDispatch()
     const router = useRouter()
 
@@ -119,12 +126,14 @@ const Profile = () => {
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
-        router.replace('/welcome')
+        router.dismissAll()
+        ToastAndroid.show('Logout successful', ToastAndroid.SHORT)
     }
 
     return (
         <ScreenWrapper>
             <ThemedView style={styles.container}>
+                <Header name="Profile" right={<Ionicons name="log-out-outline" size={24} color={Theme === 'light' ? '#000' : '#fff'} onPress={() => setIsShownLogoutModal(true)} />} />
                 <Pressable onPress={pickImage}>
                     <View style={styles.avatarBox}>
                         {uploading ? (
@@ -134,16 +143,18 @@ const Profile = () => {
                         ) : (
                             <ThemedText>No Avatar</ThemedText>
                         )}
+                        <View style={styles.cameraIcon}>
+                            <Ionicons name="camera-outline" size={20} color={Theme === 'light' ? '#000' : '#fff'} />
+                        </View>
                     </View>
                 </Pressable>
 
-                <Button title="Change Avatar" onPress={pickImage} style={{ marginBottom: 10 }} />
 
                 <ThemedText style={styles.label}>Email</ThemedText>
                 <TextInput
                     value={userInput.email}
                     editable
-                    style={styles.input}
+                    style={[styles.input, { color: Theme === 'light' ? '#000' : '#fff' }]}
                     onChangeText={(text) =>
                         setUserInput((prev) => ({ ...prev, email: text }))
                     }
@@ -155,25 +166,22 @@ const Profile = () => {
                     onChangeText={(text) =>
                         setUserInput((prev) => ({ ...prev, full_name: text }))
                     }
-                    style={styles.input}
+                    style={[styles.input, { color: Theme === 'light' ? '#000' : '#fff' }]}
                 />
 
                 <ThemedText style={styles.label}>Username</ThemedText>
-                <ThemedText style={styles.input}>{userInput.username}</ThemedText>
+                <ThemedText style={[styles.input, { color: Theme === 'light' ? '#000' : '#fff' }]}>{userInput.username}</ThemedText>
 
                 <Button
                     title={updating ? 'Updating...' : 'Update Profile'}
                     onPress={updateProfile}
                     style={{ marginTop: 10 }}
                 />
-                <Button
-                    title="Logout"
-                    backgroundColor="red"
-                    onPress={handleLogout}
-                    style={{ marginTop: 20 }}
-                />
+
             </ThemedView>
-        </ScreenWrapper>
+            <ActionModal visible={isShwownLogoutModal} title="Logout" message="Are you sure you want to logout?" onConfirm={handleLogout} onCancel={() => setIsShownLogoutModal(false)} />
+            <StatusBar style="dark" />
+        </ScreenWrapper >
     )
 }
 
@@ -182,7 +190,7 @@ export default Profile
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
+        paddingHorizontal: wp(2),
     },
     avatarBox: {
         alignSelf: 'center',
@@ -202,6 +210,15 @@ const styles = StyleSheet.create({
         height: '100%',
         borderRadius: 60,
     },
+    cameraIcon: {
+        position: 'absolute',
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: wp(1),
+        alignItems: 'center',
+        width: wp(30),
+    },
+
     label: {
         marginTop: 10,
         fontWeight: 'bold',

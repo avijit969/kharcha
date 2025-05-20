@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider } from 'react-redux';
 import store from '@/store/store';
 import * as Notifications from 'expo-notifications';
+import { registerForPushNotificationsAsync } from '@/utils/notification';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -42,14 +43,10 @@ export default function RootLayout() {
       }
     }
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log(notification);
       // redirect(notification);
     });
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log(response);
-      setTimeout(() => {
-        redirect(response.notification);
-      }, 1000);
+      redirect(response.notification);
     });
     return () => {
       notificationListener.current &&

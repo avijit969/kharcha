@@ -32,7 +32,7 @@ interface Theme {
 }
 export const theme: Theme = {
   colors: {
-    primary: "#f39c12",
+    primary: "#fe8e00",
     secondary: "#f8c471",
     primaryDark: "#b9770e",
     dark: "#3E3E3E",

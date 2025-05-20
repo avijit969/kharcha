@@ -13,8 +13,10 @@ const Header = ({ name, right }: { name: string, right?: React.ReactNode }) => {
     const router = useRouter()
     return (
         <ThemedView style={styles.header}>
-            <Ionicons name="arrow-back" size={24} color={theme === 'dark' ? 'white' : 'black'} style={[styles.backBtnIcon, { backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }]} onPress={() => router.back()} />
-            <ThemedText style={styles.title}>{name}</ThemedText>
+            <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name="arrow-back" size={24} color={theme === 'dark' ? 'white' : 'black'} style={[styles.backBtnIcon, { backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }]} onPress={() => router.back()} />
+                <ThemedText style={styles.title}>{name}</ThemedText>
+            </ThemedView>
             {right && right}
         </ThemedView>
     )
@@ -27,7 +29,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
-        justifyContent: 'flex-start',
+        justifyContent: 'space-between',
         marginTop: 10,
         marginLeft: wp(1)
     },
