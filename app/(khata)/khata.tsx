@@ -8,7 +8,7 @@ import InputField from '@/components/InputField';
 import { supabase } from '@/lib/supabase';
 import Button from '@/components/Button';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { useDispatch } from 'react-redux';
 import { addKhata } from '@/features/khata/khataSlice';
@@ -30,6 +30,7 @@ const Khata = () => {
             mediaTypes: ["images"],
             quality: 1,
             allowsEditing: true,
+            aspect: [1, 1],
         });
 
         if (!result.canceled) {

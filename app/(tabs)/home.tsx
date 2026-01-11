@@ -3,8 +3,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  RefreshControl,
+  StatusBar as RNStatusBar
 } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ScreenWrapper from '@/components/ScreenWrapper';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -21,6 +23,9 @@ import { RootState, AppDispatch } from '@/store/store';
 import { setKhata } from '@/features/khata/khataSlice';
 import { Image } from 'expo-image';
 import { setUser } from '@/features/user/userSclice';
+import { theme } from '@/constants/theme';
+import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from '@/hooks/useColorScheme.web';
 
 export type KhataData = {
   id: string | number;
@@ -43,123 +48,153 @@ const Home = () => {
   const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((state: RootState) => state.user);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState(false);
   const khata = useSelector((state: RootState) => state.khata);
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      const session = await supabase.auth.getSession()
-      const authUser = session.data.session?.user
-      if (authUser) {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', authUser.id)
-          .single()
-        if (data) {
-          dispatch(setUser(data))
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
-        }
+  const fetchUserDetails = async () => {
+    const session = await supabase.auth.getSession()
+    const authUser = session.data.session?.user
+    if (authUser) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single()
+      if (data) {
+        dispatch(setUser(data))
       }
     }
+  }
 
-    fetchUserDetails()
-  }, [])
-  useEffect(() => {
-    const getAllKhata = async () => {
-      setLoading(true);
+  const getAllKhata = async () => {
+    setLoading(true);
 
-      const userResponse = await supabase.auth.getUser();
+    const userResponse = await supabase.auth.getUser();
 
-      if (!userResponse.data.user) {
-        setLoading(false);
-        return;
-      }
+    if (!userResponse.data.user) {
+      setLoading(false);
+      return;
+    }
 
-      const { data, error } = await supabase
-        .from('members')
-        .select(`
+    const { data, error } = await supabase
+      .from('members')
+      .select(`
           khata:khata_id(id, name, cover_image, description, created_by, created_at, updated_at),
           users:user_id(id,full_name, avatar,expo_push_token)
         `)
-        .eq('user_id', userResponse.data.user.id)
-        .order('created_at', { ascending: false });
+      .eq('user_id', userResponse.data.user.id)
+      .order('created_at', { ascending: false });
 
-      if (error) {
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
-        const transformedKhata: KhataData[] = data.map((item: any) => ({
-          id: item.khata.id,
-          name: item.khata.name,
-          cover_image: item.khata.cover_image,
-          description: item.khata.description,
-          created_by: item.khata.created_by,
-          created_at: item.khata.created_at,
-          updated_at: item.khata.updated_at,
-          users: {
-            full_name: item.users.full_name,
-            avatar: item.users.avatar,
-          },
-        }));
-        dispatch(setKhata(transformedKhata));
-      }
-
+    if (error) {
       setLoading(false);
-    };
+      return;
+    }
 
+    if (data) {
+      const transformedKhata: KhataData[] = data.map((item: any) => ({
+        id: item.khata.id,
+        name: item.khata.name,
+        cover_image: item.khata.cover_image,
+        description: item.khata.description,
+        created_by: item.khata.created_by,
+        created_at: item.khata.created_at,
+        updated_at: item.khata.updated_at,
+        users: {
+          full_name: item.users.full_name,
+          avatar: item.users.avatar,
+        },
+      }));
+      dispatch(setKhata(transformedKhata));
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchUserDetails()
     getAllKhata();
   }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await getAllKhata();
+    setRefreshing(false);
+  }, []);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   return (
     <ScreenWrapper>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <ThemedView style={styles.container}>
-        <ThemedView style={styles.header}>
-          <ThemedText style={styles.headerText}>
-            Welcome to Kharcha!
-          </ThemedText>
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View>
+            <ThemedText style={styles.greetingText}>{getGreeting()},</ThemedText>
+            <ThemedText style={styles.userNameText}>
+              {user.user.full_name?.split(' ')[0] || 'User'} 👋
+            </ThemedText>
+          </View>
           <TouchableOpacity onPress={() => router.push('/profile')}>
-            <View style={styles.profileIcon}>
-              {user.user.avatar ? (
-                <Image
-                  source={{ uri: user.user.avatar }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <Ionicons name="person-outline" size={24} color="black" style={{ margin: 10 }} />
-              )}
-
-            </View>
+            <Image
+              source={user.user.avatar ? { uri: user.user.avatar } : require('@/assets/images/icon.png')} // Fallback if no avatar
+              style={styles.avatar}
+              contentFit="cover"
+            />
           </TouchableOpacity>
-        </ThemedView>
+        </View>
 
-        <ThemedText style={styles.title}>Your khatas are available here.</ThemedText>
+        {/* Dashboard Content */}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {/* Quick Stats or Promo Banner could go here */}
 
-        <ScrollView>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>My Khatas</ThemedText>
+            {/* <ThemedText style={styles.seeAll}>See All</ThemedText> */}
+          </View>
+
           {loading ? (
-            [1, 2].map((_, i) => (
+            [1, 2, 3].map((_, i) => (
               <ShimmerPlaceholder
                 key={i}
-                style={{
-                  height: hp(30),
-                  borderRadius: 10,
-                  marginVertical: 10,
-                  width: '100%',
-                }}
+                style={styles.shimmerCard}
               />
             ))
           ) : (
-            khata.map((khataItem) => (
-              <KhataCard
-                key={khataItem.id}
-                data={khataItem as KhataData}
-              />
-            ))
+            <View style={styles.cardsContainer}>
+              {khata.map((khataItem) => (
+                <View key={khataItem.id} style={styles.cardWrapper}>
+                  <KhataCard
+                    data={khataItem as KhataData}
+                  />
+                </View>
+              ))}
+            </View>
           )}
+
           {!loading && khata.length === 0 && (
-            <ThemedText style={{ textAlign: 'center', marginTop: hp(20), fontSize: 16, fontWeight: 'bold' }}>
-              You don't have any khata or you are not a member of any khata
-            </ThemedText>
+            <View style={styles.emptyState}>
+              <Ionicons name="folder-open-outline" size={60} color={isDark ? '#444' : '#ccc'} />
+              <ThemedText style={styles.emptyText}>
+                No Khatas Found
+              </ThemedText>
+              <ThemedText style={styles.emptySubText}>
+                Create a new one to start tracking expenses!
+              </ThemedText>
+            </View>
           )}
         </ScrollView>
       </ThemedView>
@@ -173,47 +208,78 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'column',
     flex: 1,
-    gap: hp(2),
-    padding: wp(2),
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  scrollContent: {
+    paddingBottom: hp(10),
+    paddingHorizontal: wp(4),
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
     justifyContent: 'space-between',
-    marginBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'gray',
-    paddingBottom: 10,
-    marginHorizontal: wp(1)
+    alignItems: 'center',
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(2),
+    marginBottom: hp(1),
+  },
+  greetingText: {
+    fontSize: wp(4),
+    color: '#888',
+    fontFamily: 'Inter_400Regular',
+  },
+  userNameText: {
+    fontSize: wp(5),
+    fontWeight: 'bold',
+    fontFamily: 'Inter_700Bold',
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  profileIcon: {
-    backgroundColor: 'white',
-    borderRadius: 50,
+    width: hp(6),
+    height: hp(6),
+    borderRadius: hp(3),
     borderWidth: 2,
-    borderColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
+    borderColor: theme.colors.primary,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: hp(2),
+  },
+  sectionTitle: {
+    fontSize: wp(5),
+    fontWeight: '700',
+  },
+  seeAll: {
+    color: theme.colors.primary,
+    fontSize: wp(3.5),
+  },
+  cardsContainer: {
+    gap: hp(2),
+  },
+  cardWrapper: {
+    // Wrapper to add spacing or shadow if needed outside the component
+  },
+  shimmerCard: {
+    height: hp(22),
+    borderRadius: 16,
+    marginBottom: hp(2),
+    width: '100%',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: hp(10),
+    gap: 10,
+  },
+  emptyText: {
+    fontSize: wp(5),
+    fontWeight: '600',
+    color: '#888',
+  },
+  emptySubText: {
+    fontSize: wp(3.5),
+    color: '#aaa',
+    textAlign: 'center',
+    maxWidth: '70%',
   },
 });

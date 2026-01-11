@@ -1,11 +1,13 @@
 import {
     StyleSheet,
     FlatList,
-    ActivityIndicator,
     View,
     ToastAndroid,
+    TouchableOpacity,
+    Modal,
+    Text
 } from 'react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,15 +22,13 @@ import { hp, wp } from '@/helpers/common';
 import { supabase } from '@/lib/supabase';
 
 import { RootState } from '@/store/store';
-import { addKharcha, removeKharcha, setKharcha } from '@/features/kharcha/kharchaSlice';
+import { removeKharcha } from '@/features/kharcha/kharchaSlice';
 import { theme } from '@/constants/theme';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import AddKrachaBS from '@/components/AddKrachaBS';
 import Header from '@/components/Header';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import ActionModal from '@/components/ActionModal';
-import { RealtimeMessage } from '@supabase/supabase-js';
+import AddEditKharchaModal from '@/components/AddEditKharchaModal';
 
 export type Kharcha = {
     id: string;
@@ -50,12 +50,14 @@ export type Kharcha = {
 const All_kharcha = () => {
     const { id } = useLocalSearchParams<{ id: string }>();
     const dispatch = useDispatch();
-    const themeMode = useColorScheme();
-    const isDark = themeMode === 'dark';
-    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+
+    // Modal & Selection State
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-    const [operationType, setOperationType] = useState<"add" | "edit">("add");
-    const [selectedKharcha, setSelectedKharcha] = useState<Kharcha>();
+    const [addEditModalVisible, setAddEditModalVisible] = useState(false);
+    const [selectedKharcha, setSelectedKharcha] = useState<Kharcha | undefined>(undefined);
+
     const khata = useSelector((state: RootState) =>
         state.khata.find((item) => item.id === id)
     );
@@ -63,19 +65,21 @@ const All_kharcha = () => {
 
     const openEditModal = (kharchaData: Kharcha) => {
         setSelectedKharcha(kharchaData);
-        setOperationType("edit");
-        bottomSheetModalRef.current?.present();
+        setAddEditModalVisible(true);
     };
-    // sort kharcha by created_at
+
     const kharchaList = useSelector((state: RootState) => state.kharcha.kharcha);
+
     const handlePresentModalPress = useCallback(() => {
-        bottomSheetModalRef.current?.present();
+        setSelectedKharcha(undefined);
+        setAddEditModalVisible(true);
     }, []);
+
     const handledeleteKharcha = async (id: string) => {
         const { error } = await supabase
             .from('kharcha')
             .delete()
-            .eq('id', selectedKharcha?.id);
+            .eq('id', selectedKharcha?.id || '');
         if (error) {
             ToastAndroid.show(error.message, ToastAndroid.SHORT);
         }
@@ -84,87 +88,100 @@ const All_kharcha = () => {
         ToastAndroid.show('Kharcha deleted successfully!', ToastAndroid.SHORT);
     };
 
+    const formatDate = (dateString?: string | null) => {
+        if (!dateString) return '';
+        return new Date(dateString).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     const renderItem = ({ item }: { item: Kharcha }) => (
-        <ThemedView style={[styles.card]}>
-            <ThemedView style={styles.cardRow}>
-                <ThemedView style={styles.rowLeft}>
-                    <Ionicons
-                        name="wallet-outline"
-                        size={20}
-                        color={isDark ? '#4facfe' : '#007aff'}
-                    />
-                    <ThemedText style={styles.cardTitle}>{item.name}</ThemedText>
-                </ThemedView>
-
-                <ThemedView style={styles.rowRight}>
-                    <Ionicons name="cash-outline" size={18} color="#28a745" />
-                    <ThemedText style={styles.amount}>
-                        ₹ {new Intl.NumberFormat('en-IN').format(item.amount)}
-                    </ThemedText>
-                    {/* Delete Button icon */}
-                    <Ionicons
-                        name="trash-outline"
-                        size={18}
-                        color={"red"}
-                        onPress={() => {
-                            setDeleteModalVisible(true);
-                            setSelectedKharcha(item);
-                        }}
-                        style={{ marginLeft: 10 }}
-                    />
-                </ThemedView>
-            </ThemedView>
-
-            {item.description && item.description.length > 0 && (
-                <ThemedView style={styles.cardRow}>
-                    <ThemedView style={styles.rowLeft}>
+        <ThemedView style={[styles.card, {
+            backgroundColor: isDark ? '#1e1e1e' : '#fff',
+            borderColor: isDark ? '#333' : '#eee',
+        }]}>
+            {/* Header: Name, Actions, Amount */}
+            <View style={styles.cardHeader}>
+                <View style={styles.headerLeft}>
+                    <View style={[styles.iconContainer, { backgroundColor: isDark ? '#333' : '#f0f9ff' }]}>
                         <Ionicons
-                            name="information-circle-outline"
-                            size={16}
-                            color={isDark ? '#aaa' : '#777'}
+                            name="wallet"
+                            size={20}
+                            color={theme.colors.primary}
                         />
-                        <ThemedText style={styles.description}>{item.description}</ThemedText>
-                    </ThemedView>
-                </ThemedView>
-            )}
-            <ThemedView style={styles.cardRow}>
-                <ThemedView style={styles.rowLeft}>
-                    <Ionicons name="pricetag-outline" size={16} color={isDark ? '#ccc' : '#666'} />
-                    <ThemedText style={[styles.type, { color: isDark ? '#ccc' : '#666' }]}>
-                        {item.type}
+                    </View>
+                    <View>
+                        <ThemedText style={styles.cardTitle}>{item.name}</ThemedText>
+                        <ThemedText style={[styles.paymentMode, { color: isDark ? '#aaa' : '#666' }]}>
+                            {item.payment_mode || 'Cash'} • {item.type}
+                        </ThemedText>
+                    </View>
+                </View>
+                <View style={styles.headerRight}>
+                    <ThemedText style={styles.amount}>
+                        ₹{new Intl.NumberFormat('en-IN').format(item.amount)}
                     </ThemedText>
-                </ThemedView>
+                </View>
+            </View>
 
-                <ThemedView style={styles.rowRight}>
-                    {item.users.avatar ? <Image source={{ uri: item.users.avatar }} style={{ width: 24, height: 24, borderRadius: 12 }} /> :
-                        <Ionicons
-                            name="person-circle-outline"
-                            size={18}
-                            color={isDark ? '#ccc' : '#666'}
-                        />}
-                    <ThemedText style={{ fontSize: 13, color: isDark ? '#ccc' : '#555' }}>
-                        Paid By {item.users.full_name}
+            {/* Description Body */}
+            {item.description ? (
+                <View style={styles.descriptionContainer}>
+                    <ThemedText style={[styles.description, { color: isDark ? '#ccc' : '#555' }]} numberOfLines={2}>
+                        {item.description}
                     </ThemedText>
-                    {/* Edit Button icon */}
-                    <Ionicons
-                        name="create-outline"
-                        size={18}
-                        color={"#007aff"}
+                </View>
+            ) : null}
+
+            <View style={[styles.divider, { backgroundColor: isDark ? '#333' : '#f0f0f0' }]} />
+
+            {/* Footer: User & Date & Actions */}
+            <View style={styles.cardFooter}>
+                <View style={styles.footerUser}>
+                    {item.users.avatar ? (
+                        <Image source={{ uri: item.users.avatar }} style={styles.avatar} />
+                    ) : (
+                        <Ionicons name="person-circle" size={24} color={isDark ? '#ccc' : '#888'} />
+                    )}
+                    <View>
+                        <ThemedText style={[styles.footerText, { color: isDark ? '#ccc' : '#444', fontWeight: '500' }]}>
+                            {item.users.full_name?.split(' ')[0]}
+                        </ThemedText>
+                        <ThemedText style={[styles.footerSubText, { color: isDark ? '#888' : '#999' }]}>
+                            {formatDate(item.created_at)}
+                        </ThemedText>
+                    </View>
+                </View>
+
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity
                         onPress={() => openEditModal(item)}
-                        style={{ marginLeft: 10 }}
-                    />
-                </ThemedView>
-                <ThemedText style={{ fontSize: 13, color: isDark ? '#ccc' : '#555' }}>
-                    {item.created_at}
-                </ThemedText>
-            </ThemedView>
+                        style={[styles.actionBtn, { backgroundColor: isDark ? '#334' : '#eef2ff' }]}
+                    >
+                        <Ionicons name="create-outline" size={18} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setSelectedKharcha(item);
+                            setDeleteModalVisible(true);
+                        }}
+                        style={[styles.actionBtn, { backgroundColor: isDark ? '#322' : '#fff1f2' }]}
+                    >
+                        <Ionicons name="trash-outline" size={18} color={theme.colors.rose} />
+                    </TouchableOpacity>
+                </View>
+            </View>
         </ThemedView>
     );
 
     return (
         <ScreenWrapper>
-            <ThemedView style={{ flex: 1, paddingBottom: 20 }}>
-                <StatusBar style="dark" />
+            <ThemedView style={{ flex: 1 }}>
+                <StatusBar style={isDark ? "light" : "dark"} />
                 <Header name={"All Kharcha"} right={
                     <Ionicons
                         name="bar-chart-outline"
@@ -173,18 +190,19 @@ const All_kharcha = () => {
                         onPress={() => {
                             router.push(`/dashboard/${khata?.id}` as any);
                         }}
-                        style={[{ marginRight: 10 }]}
                     />
                 } />
-                <ThemedView style={styles.container}>
-                    <ThemedText
-                        style={[
-                            styles.heading,
-                            { color: isDark ? '#f5f5f5' : '#1e1e1e' },
-                        ]}
-                    >
-                        💰 {khata?.name}
-                    </ThemedText>
+
+                <View style={styles.contentContainer}>
+                    <View style={styles.pageHeader}>
+                        <ThemedText style={styles.heading}>
+                            {khata?.name}
+                        </ThemedText>
+                        <ThemedText style={{ color: isDark ? '#aaa' : '#666' }}>
+                            track your expenses
+                        </ThemedText>
+                    </View>
+
                     <FlatList
                         data={kharchaList}
                         keyExtractor={(item) => item.id}
@@ -192,53 +210,46 @@ const All_kharcha = () => {
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={() => (
-                            <ThemedText
-                                style={{
-                                    textAlign: 'center',
-                                    fontSize: 16,
-                                    color: isDark ? '#aaa' : '#555',
-                                }}
-                            >
-                                No kharcha found for this khata.
-                            </ThemedText>
+                            <View style={styles.emptyState}>
+                                <Ionicons name="receipt-outline" size={64} color={isDark ? '#333' : '#ddd'} />
+                                <ThemedText style={styles.emptyText}>No kharcha records yet.</ThemedText>
+                                <ThemedText style={styles.emptySubText}>Add one to get started!</ThemedText>
+                            </View>
                         )}
                     />
-                </ThemedView>
-                <Button
-                    title="Add New Kharcha"
-                    onPress={() => {
-                        handlePresentModalPress();
-                    }}
-                    style={{
-                        paddingVertical: 14,
-                        borderRadius: 12,
-                        backgroundColor: isDark ? '#4facfe' : '#007aff',
-                        marginHorizontal: 20,
-                    }}
-                />
+                </View>
+
+                <View style={[styles.fabContainer, { backgroundColor: isDark ? '#000' : '#fff' }]}>
+                    <Button
+                        title="Add New Kharcha"
+                        onPress={handlePresentModalPress}
+                        style={styles.addButton}
+                        textStyle={{ fontWeight: 'bold' }}
+                    />
+                </View>
 
             </ThemedView>
-            <AddKrachaBS
-                bottomSheetModalRef={bottomSheetModalRef}
-                khataId={id}
-                operationType={operationType}
-                data={selectedKharcha}
-                khataName={khata?.name}
-            />
+
+
+
             <ActionModal
                 visible={deleteModalVisible}
                 title="Delete Kharcha"
-                message="Are you sure you want to delete this kharcha?"
+                message="Are you sure you want to delete this record?"
                 confirmText="Delete"
                 cancelText="Cancel"
                 onConfirm={() => {
                     if (!selectedKharcha) return;
                     handledeleteKharcha(selectedKharcha.id);
-                    setDeleteModalVisible(false);
                 }}
-                onCancel={() => {
-                    setDeleteModalVisible(false);
-                }}
+                onCancel={() => setDeleteModalVisible(false)}
+            />
+            <AddEditKharchaModal
+                visible={addEditModalVisible}
+                onClose={() => setAddEditModalVisible(false)}
+                khataId={id}
+                khataName={khata?.name}
+                data={selectedKharcha as any}
             />
         </ScreenWrapper>
     );
@@ -247,66 +258,144 @@ const All_kharcha = () => {
 export default All_kharcha;
 
 const styles = StyleSheet.create({
-    container: {
+    contentContainer: {
         flex: 1,
-        paddingHorizontal: wp(1),
-        paddingTop: hp(2),
+        paddingHorizontal: wp(4),
+    },
+    pageHeader: {
+        marginVertical: hp(2),
     },
     heading: {
-        fontSize: wp(6.2),
+        fontSize: wp(7),
         fontWeight: 'bold',
-        paddingBottom: 14,
+        fontFamily: 'Inter_700Bold', // Usage implies font load, fallback safe
     },
     listContent: {
-        paddingBottom: 80,
+        paddingBottom: hp(12), // Space for floating bottom button
     },
+    // Card Styles
     card: {
-        borderRadius: 12,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
+        borderRadius: 16,
+        padding: 16,
         marginBottom: 16,
+        borderWidth: 1,
+        // Shadow for iOS
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-        elevation: 3,
-        borderWidth: 0.5,
-        borderColor: '#ddd',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        // Elevation for Android
+        elevation: 2,
     },
-    cardRow: {
+    cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
+        alignItems: 'flex-start',
+        marginBottom: 8,
     },
-    rowLeft: {
+    headerLeft: {
         flexDirection: 'row',
+        gap: 12,
         alignItems: 'center',
-        gap: 8,
-        flexShrink: 1,
+        flex: 1,
     },
-    rowRight: {
-        flexDirection: 'row',
+    iconContainer: {
+        padding: 10,
+        borderRadius: 12,
+        justifyContent: 'center',
         alignItems: 'center',
-        gap: 6,
     },
     cardTitle: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
+        marginBottom: 2,
+    },
+    paymentMode: {
+        fontSize: 12,
+        textTransform: 'capitalize',
+    },
+    headerRight: {
+        alignItems: 'flex-end',
+    },
+    amount: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: theme.colors.primary, // Using primary color for emphasis
+    },
+    descriptionContainer: {
+        marginTop: 4,
+        marginBottom: 8,
+        paddingLeft: 4,
     },
     description: {
         fontSize: 14,
-        color: '#888',
-        flexWrap: 'wrap',
-        flexShrink: 1,
+        lineHeight: 20,
     },
-    amount: {
-        fontSize: 15,
-        fontWeight: 'bold',
-        color: '#28a745',
+    divider: {
+        height: 1,
+        marginVertical: 10,
+        width: '100%',
     },
-    type: {
+    cardFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    footerUser: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    avatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#eee',
+    },
+    footerText: {
         fontSize: 13,
-        textTransform: 'capitalize',
     },
+    footerSubText: {
+        fontSize: 11,
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    actionBtn: {
+        padding: 8,
+        borderRadius: 8,
+    },
+    // Empty State
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: hp(5),
+        gap: 10,
+    },
+    emptyText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#888',
+    },
+    emptySubText: {
+        fontSize: 14,
+        color: '#aaa',
+    },
+    // Bottom Action
+    fabContainer: {
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.05)',
+        alignItems: 'center',
+    },
+    addButton: {
+        width: '100%',
+        height: hp(6),
+    }
 });

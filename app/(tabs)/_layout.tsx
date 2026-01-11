@@ -14,6 +14,7 @@ import { View } from 'react-native';
 import { Text } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { addNotification, setNotifications } from '@/features/notification/notificationSclice';
+import { Feather } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -72,14 +73,14 @@ export default function TabLayout() {
         name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Ionicons size={28} name="home-outline" color={color} />,
+          tabBarIcon: ({ color }) => <Feather name='home' size={28} color={color} />,
         }}
       />
       <Tabs.Screen
         name="dashboard"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color }) => <Ionicons size={28} name="analytics-outline" color={color} />,
+          tabBarIcon: ({ color }) => <Feather name='bar-chart' size={28} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -88,7 +89,7 @@ export default function TabLayout() {
           title: 'Notification',
           tabBarIcon: ({ color }) => (
             <View style={{ width: 30, height: 30, justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons size={28} name="notifications-outline" color={color} />
+              <Feather size={28} name="bell" color={color} />
               {noficationCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{noficationCount}</Text>

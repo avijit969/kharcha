@@ -7,10 +7,10 @@ import { supabase } from "@/lib/supabase";
 
 type message = {
   to: string;
-  sound: string;
+  sound?: string;
   title: string;
-  body: string;
-  data: any;
+  body?: string;
+  data?: any;
 };
 async function sendPushNotification(message: message) {
   const response = await fetch("https://exp.host/--/api/v2/push/send", {
