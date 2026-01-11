@@ -5,13 +5,14 @@ import { theme } from '@/constants/theme'
 
 interface Props extends Omit<TextInputProps, 'onChange'> {
     icon?: React.ReactNode
+    rightIcon?: React.ReactNode
     onChange: (text: string) => void
     value: string
-    // Removed specific inputType and secureTextEntry as they are part of TextInputProps
 }
 
 const InputField: React.FC<Props> = ({
     icon,
+    rightIcon,
     onChange,
     value,
     style,
@@ -37,6 +38,7 @@ const InputField: React.FC<Props> = ({
                 placeholderTextColor={isDark ? "#888" : "#9CA3AF"}
                 {...props}
             />
+            {rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
         </View>
     )
 }
@@ -59,6 +61,9 @@ const styles = StyleSheet.create({
     },
     icon: {
         marginRight: 10,
+    },
+    rightIcon: {
+        marginLeft: 10,
     },
     input: {
         flex: 1,

@@ -20,6 +20,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 SplashScreen.preventAutoHideAsync();
@@ -48,12 +50,6 @@ export default function RootLayout() {
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       redirect(response.notification);
     });
-    return () => {
-      notificationListener.current &&
-        Notifications.removeNotificationSubscription(notificationListener.current);
-      responseListener.current &&
-        Notifications.removeNotificationSubscription(responseListener.current);
-    };
   }, []);
 
   useEffect(() => {

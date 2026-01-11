@@ -5,7 +5,8 @@ import {
     Platform,
     useColorScheme,
     ScrollView,
-    View
+    View,
+    TouchableOpacity
 } from 'react-native';
 import React, { useState } from 'react';
 import ScreenWrapper from '@/components/ScreenWrapper';
@@ -26,6 +27,7 @@ const Signup = () => {
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
     const [fullName, setFullName] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const router = useRouter()
     const colorScheme = useColorScheme()
@@ -63,7 +65,7 @@ const Signup = () => {
         <ScreenWrapper>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : "height"}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             >
                 <ScrollView
@@ -74,7 +76,7 @@ const Signup = () => {
                     <ThemedView style={styles.container}>
                         <View style={styles.headerContainer}>
                             <Image
-                                source={require('@/assets/images/kharcha_auth_3d.png')}
+                                source={require('@/assets/images/auth_illustration.png')}
                                 style={styles.heroImage}
                                 contentFit="contain"
                                 transition={500}
@@ -110,8 +112,17 @@ const Signup = () => {
                                 placeholder="Password"
                                 onChange={setPassword}
                                 value={password}
-                                secureTextEntry
+                                secureTextEntry={!showPassword}
                                 icon={<Ionicons name="lock-closed-outline" size={22} color={isDark ? '#ccc' : theme.colors.textLight} />}
+                                rightIcon={
+                                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                        <Ionicons
+                                            name={showPassword ? "eye-off-outline" : "eye-outline"}
+                                            size={22}
+                                            color={isDark ? '#ccc' : theme.colors.textLight}
+                                        />
+                                    </TouchableOpacity>
+                                }
                             />
 
                             <Button
@@ -119,6 +130,7 @@ const Signup = () => {
                                 onPress={signInWithEmail}
                                 style={styles.signupButton}
                                 textStyle={styles.signupButtonText}
+                                backgroundColor={theme.colors.primary}
                             />
                         </View>
 
@@ -163,7 +175,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: wp(8),
-        fontWeight: '700',
+        fontWeight: '800',
         marginBottom: hp(1),
         textAlign: 'center',
     },
@@ -171,21 +183,22 @@ const styles = StyleSheet.create({
         fontSize: wp(4),
         textAlign: 'center',
         paddingHorizontal: wp(10),
+        lineHeight: wp(6),
     },
     formContainer: {
         gap: hp(2.5),
         marginTop: hp(2),
     },
     signupButton: {
-        borderRadius: 16,
-        paddingVertical: hp(1.8),
+        borderRadius: 18,
+        paddingVertical: hp(2),
         shadowColor: theme.colors.primary,
         shadowOffset: {
             width: 0,
-            height: 4,
+            height: 8,
         },
         shadowOpacity: 0.3,
-        shadowRadius: 4.65,
+        shadowRadius: 12,
         elevation: 8,
     },
     signupButtonText: {

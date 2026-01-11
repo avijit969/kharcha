@@ -26,7 +26,8 @@ import { setUser } from '@/features/user/userSclice';
 import { theme } from '@/constants/theme';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/useColorScheme.web';
-
+import { AddLoggedInDevices } from '@/utils/general';
+import * as Device from 'expo-device';
 export type KhataData = {
   id: string | number;
   name: string;
@@ -115,8 +116,13 @@ const Home = () => {
   useEffect(() => {
     fetchUserDetails()
     getAllKhata();
-  }, []);
 
+  }, []);
+  useEffect(() => {
+    if (user.user) {
+      AddLoggedInDevices(user.user.id, Device.deviceName!)
+    }
+  }, [user.user])
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await getAllKhata();

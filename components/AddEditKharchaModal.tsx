@@ -68,6 +68,7 @@ const AddEditKharchaModal: React.FC<AddEditKharchaModalProps> = ({
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState(CATEGORIES[8].value); // Default 'others'
     const [paymentMode, setPaymentMode] = useState('cash');
+    const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
 
     // Get Logged In User
@@ -86,6 +87,9 @@ const AddEditKharchaModal: React.FC<AddEditKharchaModalProps> = ({
                 setDescription(data.description || '');
                 setCategory(data.type);
                 setPaymentMode(data.payment_mode);
+                // For now, default to all members selected on Edit, or fetch actuals if needed.
+                // Ideally fetch, but keeping it simple for now as requested.
+                setSelectedMembers(members.map(m => m.id));
             } else {
                 // Add Mode - Reset
                 setAmount('');
@@ -93,9 +97,10 @@ const AddEditKharchaModal: React.FC<AddEditKharchaModalProps> = ({
                 setDescription('');
                 setCategory('others');
                 setPaymentMode('cash');
+                setSelectedMembers(members.map(m => m.id));
             }
         }
-    }, [visible, data]);
+    }, [visible, data, members]);
 
     const handleSubmit = async () => {
         if (!amount || !title) {
@@ -103,8 +108,12 @@ const AddEditKharchaModal: React.FC<AddEditKharchaModalProps> = ({
             return;
         }
 
+        if (selectedMembers.length === 0) {
+            ToastAndroid.show('Please select at least one member to split with', ToastAndroid.SHORT);
+            return;
+        }
+
         setLoading(true);
-        const start = Date.now(); // Min loading time for smooth UX
 
         try {
             if (data) {
@@ -121,11 +130,26 @@ const AddEditKharchaModal: React.FC<AddEditKharchaModalProps> = ({
 
                 if (error) throw error;
 
+                // Update Splits
+                // 1. Delete existing
+                const { error: deleteError } = await supabase.from('splits').delete().eq('kharcha_id', data.id);
+                if (deleteError) throw deleteError;
+
+                // 2. Insert new
+                const splitAmount = parseFloat(amount) / selectedMembers.length;
+                const splitData = selectedMembers.map(uid => ({
+                    kharcha_id: data.id,
+                    user_id: uid,
+                    amount: splitAmount
+                }));
+
+                const { error: splitError } = await supabase.from('splits').insert(splitData);
+                if (splitError) throw splitError;
+
                 dispatch(updateKharcha({
                     id: data.id,
                     name: title,
                     amount: parseFloat(amount),
-                    description,
                     type: category,
                     payment_mode: paymentMode,
                     updated_at: new Date().toISOString()
@@ -138,7 +162,6 @@ const AddEditKharchaModal: React.FC<AddEditKharchaModalProps> = ({
                     .insert({
                         name: title,
                         amount: parseFloat(amount),
-                        description: description,
                         type: category,
                         payment_mode: paymentMode,
                         khata_id: khataId,
@@ -149,27 +172,17 @@ const AddEditKharchaModal: React.FC<AddEditKharchaModalProps> = ({
 
                 if (error) throw error;
 
-                if (newKharcha) {
-                    dispatch(addKharcha(newKharcha as any));
-                    // Send Notifications
-                    members.forEach((member: Member) => {
-                        if (member.id !== user?.id) {
-                            sendPushNotification({
-                                to: member.expo_push_token || '',
-                                title: `New Expense: ${title}`,
-                                body: `${user?.full_name} spent ₹${amount} in ${khataName}`,
-                                data: { url: `/kharcha/${khataId}` as string }
-                            });
-                            createNotificationInDB(
-                                `New Expense: ${title}`,
-                                `${user?.full_name} spent ₹${amount} in ${khataName}`,
-                                { url: `/kharcha/${khataId}` as string },
-                                member.id,
-                                'new_kharcha'
-                            );
-                        }
-                    });
-                }
+                // Insert Splits
+                const splitAmount = parseFloat(amount) / selectedMembers.length;
+                const splitData = selectedMembers.map(uid => ({
+                    kharcha_id: newKharcha.id,
+                    user_id: uid,
+                    amount: splitAmount
+                }));
+
+                const { error: splitError } = await supabase.from('splits').insert(splitData);
+                if (splitError) throw splitError;
+
                 ToastAndroid.show('Added successfully', ToastAndroid.SHORT);
             }
 
@@ -329,6 +342,55 @@ const AddEditKharchaModal: React.FC<AddEditKharchaModalProps> = ({
                                     })}
                                 </View>
                             </View>
+                            {/* 5. Split Section */}
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: isDark ? '#bbb' : '#555' }]}>Split With</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContainer}>
+                                    {members.map((member) => {
+                                        const isSelected = selectedMembers.includes(member.id);
+                                        return (
+                                            <TouchableOpacity
+                                                key={member.id}
+                                                onPress={() => {
+                                                    if (isSelected) {
+                                                        if (selectedMembers.length > 1) {
+                                                            setSelectedMembers(selectedMembers.filter(id => id !== member.id));
+                                                        } else {
+                                                            ToastAndroid.show("At least one member must be selected", ToastAndroid.SHORT);
+                                                        }
+                                                    } else {
+                                                        setSelectedMembers([...selectedMembers, member.id]);
+                                                    }
+                                                }}
+                                                style={[
+                                                    styles.memberChip,
+                                                    {
+                                                        backgroundColor: isSelected ? (isDark ? '#1a2e40' : '#eff6ff') : 'transparent',
+                                                        borderColor: isSelected ? theme.colors.primary : (isDark ? '#444' : '#eee'),
+                                                    }
+                                                ]}
+                                            >
+                                                {/* You might want to use actual Avatar here if available */}
+                                                <View style={[styles.avatarPlaceholder, { backgroundColor: isSelected ? theme.colors.primary : '#ccc' }]}>
+                                                    <Text style={styles.avatarInitial}>
+                                                        {member.full_name?.charAt(0).toUpperCase()}
+                                                    </Text>
+                                                </View>
+                                                <Text style={[
+                                                    styles.chipText,
+                                                    { color: isSelected ? theme.colors.primary : (isDark ? '#bbb' : '#666') }
+                                                ]}>
+                                                    {member.id === user?.id ? 'You' : member.full_name?.split(' ')[0]}
+                                                </Text>
+                                                {isSelected && (
+                                                    <Ionicons name="checkmark-circle" size={16} color={theme.colors.primary} style={styles.checkIcon} />
+                                                )}
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+
                         </ScrollView>
 
                         {/* Footer Action */}
@@ -494,4 +556,28 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
+    memberChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        gap: 8,
+    },
+    avatarPlaceholder: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarInitial: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    checkIcon: {
+        marginLeft: 2,
+    }
 });
