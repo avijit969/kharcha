@@ -154,6 +154,9 @@ const All_kharcha = () => {
                         style={{ marginLeft: 10 }}
                     />
                 </ThemedView>
+                <ThemedText style={{ fontSize: 13, color: isDark ? '#ccc' : '#555' }}>
+                    {item.created_at}
+                </ThemedText>
             </ThemedView>
         </ThemedView>
     );

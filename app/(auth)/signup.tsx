@@ -1,4 +1,12 @@
-import { StyleSheet, ToastAndroid, View, KeyboardAvoidingView, Platform, useColorScheme, ScrollView } from 'react-native';
+import {
+    StyleSheet,
+    ToastAndroid,
+    KeyboardAvoidingView,
+    Platform,
+    useColorScheme,
+    ScrollView,
+    View
+} from 'react-native';
 import React, { useState } from 'react';
 import ScreenWrapper from '@/components/ScreenWrapper';
 import { ThemedView } from '@/components/ThemedView';
@@ -11,6 +19,8 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { registerForPushNotificationsAsync } from '@/utils/notification';
+import { theme } from '@/constants/theme';
+
 const Signup = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -18,7 +28,8 @@ const Signup = () => {
     const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter()
-    const theme = useColorScheme()
+    const colorScheme = useColorScheme()
+    const isDark = colorScheme === 'dark';
 
     const signInWithEmail = async () => {
         const expoPushToken = await registerForPushNotificationsAsync();
@@ -58,92 +69,72 @@ const Signup = () => {
                 <ScrollView
                     contentContainerStyle={{ flexGrow: 1 }}
                     keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                 >
                     <ThemedView style={styles.container}>
-                        <ThemedView>
-                            <ThemedText style={styles.loginText}>Signup to Kharcha</ThemedText>
+                        <View style={styles.headerContainer}>
                             <Image
-                                source={require('@/assets/images/kharcha_auth.svg')}
-                                style={{
-                                    width: 340,
-                                    height: 280,
-                                    borderRadius: 20,
-                                    alignSelf: 'center',
-                                }}
-                                contentFit="cover"
-                                transition={1000}
+                                source={require('@/assets/images/kharcha_auth_3d.png')}
+                                style={styles.heroImage}
+                                contentFit="contain"
+                                transition={500}
                             />
-                            <InputField
-                                placeholder="Email"
-                                onChange={setEmail}
-                                value={email}
-                                icon={
-                                    <Ionicons
-                                        name="mail-outline"
-                                        size={24}
-                                        color={theme == 'dark' ? '#fff' : '#000'}
-                                    />
-                                }
-                            />
-                            <InputField
-                                placeholder="username"
-                                onChange={setUsername}
-                                value={username}
-                                icon={
-                                    <Ionicons
-                                        name="person-circle"
-                                        size={24}
-                                        color={theme == 'dark' ? '#fff' : '#000'}
-                                    />
-                                }
-                            />
+                            <ThemedText style={styles.title}>Create Account</ThemedText>
+                            <ThemedText style={styles.subtitle} lightColor={theme.colors.textLight} darkColor="#aaa">
+                                Join Kharcha to start saving today!
+                            </ThemedText>
+                        </View>
+
+                        <View style={styles.formContainer}>
                             <InputField
                                 placeholder="Full Name"
                                 onChange={setFullName}
                                 value={fullName}
-                                icon={
-                                    <Ionicons
-                                        name="person-circle"
-                                        size={24}
-                                        color={theme == 'dark' ? '#fff' : '#000'}
-                                    />
-                                }
+                                icon={<Ionicons name="person-outline" size={22} color={isDark ? '#ccc' : theme.colors.textLight} />}
+                            />
+                            <InputField
+                                placeholder="Username"
+                                onChange={setUsername}
+                                value={username}
+                                icon={<Ionicons name="at" size={22} color={isDark ? '#ccc' : theme.colors.textLight} />}
+                            />
+                            <InputField
+                                placeholder="Email Address"
+                                onChange={setEmail}
+                                value={email}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                icon={<Ionicons name="mail-outline" size={22} color={isDark ? '#ccc' : theme.colors.textLight} />}
                             />
                             <InputField
                                 placeholder="Password"
                                 onChange={setPassword}
                                 value={password}
                                 secureTextEntry
-                                icon={
-                                    <Ionicons
-                                        name="lock-closed-outline"
-                                        size={24}
-                                        color={theme == 'dark' ? '#fff' : '#000'}
-                                    />
-                                }
+                                icon={<Ionicons name="lock-closed-outline" size={22} color={isDark ? '#ccc' : theme.colors.textLight} />}
                             />
-                        </ThemedView>
 
-                        <Button
-                            title={loading ? 'Logging in...' : 'Signup'}
-                            onPress={signInWithEmail}
-                            style={{ width: '100%' }}
-                        />
-                        <ThemedText
-                            style={{ textAlign: 'center' }}
-                            lightColor="#000"
-                            darkColor="#fff"
-                        >
-                            Already have an account?{' '}
+                            <Button
+                                title={loading ? 'Creating Account...' : 'Sign Up'}
+                                onPress={signInWithEmail}
+                                style={styles.signupButton}
+                                textStyle={styles.signupButtonText}
+                            />
+                        </View>
+
+                        <View style={styles.footerContainer}>
+                            <ThemedText style={styles.footerText} lightColor={theme.colors.textLight} darkColor="#aaa">
+                                Already have an account?
+                            </ThemedText>
                             <ThemedText
                                 onPress={() => router.push('/login')}
-                                style={{ fontWeight: 'bold' }}
-                                lightColor="#000"
-                                darkColor="#fff"
+                                style={styles.loginText}
+                                lightColor={theme.colors.primary}
+                                darkColor={theme.colors.primary}
                             >
                                 Login
                             </ThemedText>
-                        </ThemedText>
+                        </View>
                     </ThemedView>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -157,14 +148,62 @@ export default Signup;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        gap: hp(2),
-        paddingHorizontal: wp(5),
+        paddingHorizontal: wp(6),
         justifyContent: 'center',
+        paddingBottom: hp(4),
+    },
+    headerContainer: {
+        alignItems: 'center',
+        marginVertical: hp(2),
+    },
+    heroImage: {
+        width: wp(50),
+        height: wp(50),
+        marginBottom: hp(1),
+    },
+    title: {
+        fontSize: wp(8),
+        fontWeight: '700',
+        marginBottom: hp(1),
+        textAlign: 'center',
+    },
+    subtitle: {
+        fontSize: wp(4),
+        textAlign: 'center',
+        paddingHorizontal: wp(10),
+    },
+    formContainer: {
+        gap: hp(2.5),
+        marginTop: hp(2),
+    },
+    signupButton: {
+        borderRadius: 16,
+        paddingVertical: hp(1.8),
+        shadowColor: theme.colors.primary,
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 4.65,
+        elevation: 8,
+    },
+    signupButtonText: {
+        fontSize: wp(4.5),
+        fontWeight: 'bold',
+    },
+    footerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: hp(4),
+        gap: 5,
+    },
+    footerText: {
+        fontSize: wp(3.8),
     },
     loginText: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginTop: 20,
+        fontSize: wp(3.8),
+        fontWeight: '700',
     },
 });

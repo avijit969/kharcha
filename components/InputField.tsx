@@ -1,42 +1,41 @@
-import { StyleSheet, TextInput, useColorScheme, View } from 'react-native'
+import { StyleSheet, TextInput, useColorScheme, View, TextInputProps } from 'react-native'
 import React, { useState } from 'react'
 import { wp } from '@/helpers/common'
 import { theme } from '@/constants/theme'
 
-interface Props {
+interface Props extends Omit<TextInputProps, 'onChange'> {
     icon?: React.ReactNode
-    placeholder: string
     onChange: (text: string) => void
     value: string
-    inputType?: "default" | "email-address" | "numeric" | "phone-pad" | "visible-password"
-    secureTextEntry?: boolean
+    // Removed specific inputType and secureTextEntry as they are part of TextInputProps
 }
 
 const InputField: React.FC<Props> = ({
     icon,
-    placeholder,
     onChange,
     value,
-    inputType = "default",
-    secureTextEntry = false
+    style,
+    ...props
 }) => {
     const [isFocused, setIsFocused] = useState(false)
-    const theme = useColorScheme()
+    const colorScheme = useColorScheme()
+    const isDark = colorScheme === 'dark';
 
     return (
-        <View style={[styles.container, isFocused && styles.focusedContainer]}>
+        <View style={[
+            styles.container,
+            isFocused && styles.focusedContainer,
+            { borderColor: isDark ? '#444' : '#E0E0E0', backgroundColor: isDark ? '#1A1A1A' : '#F9F9F9' }
+        ]}>
             {icon && <View style={styles.icon}>{icon}</View>}
             <TextInput
-                style={[styles.input, { color: theme === 'light' ? "#000" : "#fff" }]}
-                placeholder={placeholder}
+                style={[styles.input, { color: isDark ? "#fff" : "#1F2937" }, style]}
                 onChangeText={onChange}
                 value={value}
-                keyboardType={inputType}
-                secureTextEntry={secureTextEntry}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
-                placeholderTextColor={theme === 'light' ? "#ccc" : "#fff"}
-
+                placeholderTextColor={isDark ? "#888" : "#9CA3AF"}
+                {...props}
             />
         </View>
     )
@@ -49,21 +48,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: wp(5),
-        paddingHorizontal: 10,
-        paddingVertical: 12,
-        marginVertical: 5,
+        borderRadius: 16, // Modern rounded corners
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        width: '100%',
     },
     focusedContainer: {
         borderColor: theme.colors.primary,
-        borderWidth: 2,
+        borderWidth: 1.5,
     },
     icon: {
         marginRight: 10,
     },
     input: {
         flex: 1,
-        fontSize: 16,
+        fontSize: wp(4),
+        fontFamily: 'Inter_400Regular', // Assuming Inter font is available, else system font
     },
 })

@@ -18,6 +18,7 @@
       },
       "package": "site.avijit.kharcha",
       "permissions": [
+        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
       "googleServicesFile": "./google-services.json"
@@ -56,6 +57,12 @@
         "projectId": "9b6ed2d9-70b6-40b4-a2f8-8eee1a7bc705"
       }
     },
-    "owner": "abhijit969"
+    "owner": "abhijit969",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9b6ed2d9-70b6-40b4-a2f8-8eee1a7bc705"
+    }
   }
 }

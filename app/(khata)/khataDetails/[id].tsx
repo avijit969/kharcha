@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, ToastAndroid } from 'react-native'
+import { StyleSheet, View, TouchableOpacity, ToastAndroid, Modal, TouchableWithoutFeedback, Text } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import ScreenWrapper from '@/components/ScreenWrapper'
@@ -17,7 +17,6 @@ import Header from '@/components/Header'
 import { addKharcha, setKharcha } from '@/features/kharcha/kharchaSlice'
 import { StatusBar } from 'expo-status-bar'
 import { setMembers } from '@/features/khata/membersSclice'
-import * as DropdownMenu from 'zeego/dropdown-menu'
 import ActionModal from '@/components/ActionModal'
 import { removeKhata } from '@/features/khata/khataSlice'
 import EditKhataActionModal from '@/components/EditKhataActionModal'
@@ -34,6 +33,7 @@ const KhataDetailes = () => {
     const kharcha = useSelector((state: RootState) => state.kharcha.kharcha)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
+    const [showOptionsMenu, setShowOptionsMenu] = useState(false)
     const [loading, setLoading] = useState(false)
     useEffect(() => {
         const findAllKharchaByKhataId = async () => {
@@ -160,38 +160,18 @@ const KhataDetailes = () => {
             <ThemedView style={styles.container}>
                 <StatusBar style="dark" />
                 <Header name={khata.name} right={
-                    <View >
-                        <DropdownMenu.Root >
-                            <DropdownMenu.Trigger>
-                                <Ionicons name="ellipsis-vertical" size={24} color={isDark ? '#fff' : '#333'} />
-                            </DropdownMenu.Trigger>
-                            <DropdownMenu.Content
-                                color='black'
-                            >
-                                <DropdownMenu.Item
-                                    key='edit'
-                                    onSelect={() => {
-                                        setShowEditModal(true)
-                                    }}
-                                >
-                                    <DropdownMenu.ItemTitle
-                                    >Edit</DropdownMenu.ItemTitle>
-                                </DropdownMenu.Item>
-                                <DropdownMenu.Separator />
-                                <DropdownMenu.Item
-                                    key='delete'
-                                    onSelect={() => {
-                                        setShowDeleteModal(true)
-                                    }}
-                                >
-                                    <DropdownMenu.ItemTitle
-                                    >Delete</DropdownMenu.ItemTitle>
-                                </DropdownMenu.Item>
-
-                            </DropdownMenu.Content>
-                        </DropdownMenu.Root>
+                    <View style={{ position: 'relative' }}>
+                        <TouchableOpacity onPress={(e) => {
+                            // Simple toggle or show logic. 
+                            // For a custom menu, we might need a distinct state.
+                            // Let's assume we render the menu locally or use a lightweight modal.
+                            // To avoid ZIndex issues with Header, usually the menu should be at Root.
+                            // But for this quick fix, we'll try a Modal-based custom menu.
+                            setShowOptionsMenu(true);
+                        }}>
+                            <Ionicons name="ellipsis-vertical" size={24} color={isDark ? '#fff' : '#333'} />
+                        </TouchableOpacity>
                     </View>
-
                 } />
                 {/* Cover Image */}
                 {loading ?
@@ -260,6 +240,37 @@ const KhataDetailes = () => {
                     />
                 </View>
             </ThemedView>
+
+            {/* Custom Options Menu Modal */}
+            <Modal
+                transparent={true}
+                visible={showOptionsMenu}
+                animationType="fade"
+                onRequestClose={() => setShowOptionsMenu(false)}
+            >
+                <TouchableWithoutFeedback onPress={() => setShowOptionsMenu(false)}>
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.menuContainer, { backgroundColor: isDark ? '#333' : '#fff' }]}>
+                            <TouchableOpacity
+                                style={styles.menuItem}
+                                onPress={() => { setShowOptionsMenu(false); setShowEditModal(true); }}
+                            >
+                                <Ionicons name="create-outline" size={20} color={isDark ? '#eee' : '#333'} />
+                                <Text style={[styles.menuText, { color: isDark ? '#eee' : '#333' }]}>Edit</Text>
+                            </TouchableOpacity>
+                            <View style={[styles.menuSeparator, { backgroundColor: isDark ? '#555' : '#eee' }]} />
+                            <TouchableOpacity
+                                style={styles.menuItem}
+                                onPress={() => { setShowOptionsMenu(false); setShowDeleteModal(true); }}
+                            >
+                                <Ionicons name="trash-outline" size={20} color={appTheme.colors.rose} />
+                                <Text style={[styles.menuText, { color: appTheme.colors.rose }]}>Delete</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
+
             <ActionModal title='Delete Khata' message='Are you sure you want to delete this khata?' visible={showDeleteModal} onConfirm={() => deleteKhata(id as string)} onCancel={() => setShowDeleteModal(false)} confirmText='Delete' />
             <EditKhataActionModal visible={showEditModal} khataDetails={khata as any} onClose={() => setShowEditModal(false)} />
         </ScreenWrapper >
@@ -329,5 +340,38 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 4,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.1)', // Light dim
+        justifyContent: 'flex-start',
+        alignItems: 'flex-end',
+        paddingTop: hp(6), // adjust based on header height
+        paddingRight: wp(5),
+    },
+    menuContainer: {
+        borderRadius: 12,
+        paddingVertical: 8,
+        minWidth: 150,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        gap: 10,
+    },
+    menuText: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    menuSeparator: {
+        height: 1,
+        width: '100%',
     }
 })
