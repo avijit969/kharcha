@@ -28,7 +28,6 @@ type User = {
     full_name: string;
     avatar?: string | null;
     username: string;
-    expo_push_token: string
 };
 
 type Invite = {
@@ -61,9 +60,9 @@ const InviteMember = () => {
 
             const { data, error } = await supabase
                 .from('users')
-                .select('id, full_name, avatar,username,expo_push_token')
+                .select('id, full_name, avatar,username')
                 .ilike('username', `%${search}%`)
-                .neq('id', (await supabase.auth.getUser()).data.user?.id);
+                .neq('id', authUser?.id);
 
             if (!error && data) setUsers(data as User[]);
             setLoading(false);
@@ -73,7 +72,7 @@ const InviteMember = () => {
             const { data, error } = await supabase
                 .from('invites')
                 .select('invited_to_id')
-                .eq('khata_id', khata_id);
+                .eq('khata_id', khata_id!);
 
             if (!error && data) {
                 setInvitedUserIds((data as Invite[]).map((invite) => invite.invited_to_id));
@@ -88,9 +87,9 @@ const InviteMember = () => {
         return () => clearTimeout(delayDebounceFn);
     }, [search, khata_id]);
 
-    const handleInvite = async (userId: string, expo_push_token: string, full_name: string) => {
+    const handleInvite = async (userId: string, full_name: string) => {
         setInvitingUserId(userId);
-        const invited_by_id = (await supabase.auth.getUser()).data.user?.id;
+        const invited_by_id = authUser?.id;
 
         const { data, error } = await supabase.from('invites').insert([
             {
@@ -99,7 +98,7 @@ const InviteMember = () => {
                 invited_by_id,
             },
         ])
-            .select("id,khata:khata_id(name)")
+            .select("id,khata:khata_id(id,name)")
 
         if (!error) {
             setInvitedUserIds((prev) => [...prev, userId]);
@@ -107,23 +106,24 @@ const InviteMember = () => {
             ToastAndroid.show('Error inviting user', ToastAndroid.SHORT);
         }
         if (data && data[0]?.khata) {
-            dispatch(addMember({ khata_id: data[0]?.khata.id, member: { id: userId, full_name, avatar: authUser?.avatar, isAccepted: false } }))
-            createNotificationInDB(
-                `${authUser?.full_name} invited you to join ${data[0].khata?.name}`,
-                `Hey ${full_name} have been invited to join ${data[0]?.khata.name} by ${authUser?.full_name}`,
-                { url: `/accept_invite/${data[0]?.id}` },
-                userId,
-                'invite'
-            )
-            sendPushNotification({
-                to: expo_push_token,
-                title: `${authUser?.full_name} invited you to join ${data[0]?.khata.name}`,
-                body: `Hey ${full_name} have been invited to join ${data[0]?.khata.name} by ${authUser?.full_name}`,
-                data: {
-                    url: `/accept_invite/${data[0]?.id}`,
-                },
-                sound: 'default'
-            })
+            dispatch(addMember({ khata_id: data[0]?.khata.id as string, member: { id: userId, full_name, avatar: authUser?.avatar, isAccepted: false } }))
+            // createNotificationInDB(
+            //     `${authUser?.full_name} invited you to join ${data[0].khata?.name}`,
+            //     `Hey ${full_name} have been invited to join ${data[0]?.khata.name} by ${authUser?.full_name}`,
+            //     { url: `/accept_invite/${data[0]?.id}` },
+            //     userId,
+            //     'invite'
+            // )
+            // sendPushNotification({
+            //     to: expo_push_token,
+            //     title: `${authUser?.full_name} invited you to join ${data[0]?.khata.name}`,
+            //     body: `Hey ${full_name} have been invited to join ${data[0]?.khata.name} by ${authUser?.full_name}`,
+            //     data: {
+            //         url: `/accept_invite/${data[0]?.id}`,
+            //     },
+            //     sound: 'default'
+            // })
+            // call the intivite notification api from postgresql trigger when the new invite is added 
         }
         setInvitingUserId(null);
     };
@@ -178,7 +178,7 @@ const InviteMember = () => {
                                     </ThemedView>
                                     <TouchableOpacity
                                         style={[styles.inviteButton, isInvited && styles.invitedButton]}
-                                        onPress={() => !isInvited && handleInvite(item.id, item.expo_push_token, item.full_name)}
+                                        onPress={() => !isInvited && handleInvite(item.id, item.full_name)}
                                         disabled={isInvited || invitingUserId === item.id}
                                     >
                                         {isInvited ? (

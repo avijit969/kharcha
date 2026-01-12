@@ -83,7 +83,7 @@ const Home = () => {
       .from('members')
       .select(`
           khata:khata_id(id, name, cover_image, description, created_by, created_at, updated_at),
-          users:user_id(id,full_name, avatar,expo_push_token)
+          users:user_id(id,full_name, avatar)
         `)
       .eq('user_id', userResponse.data.user.id)
       .order('created_at', { ascending: false });

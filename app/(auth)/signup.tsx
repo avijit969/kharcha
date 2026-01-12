@@ -34,7 +34,6 @@ const Signup = () => {
     const isDark = colorScheme === 'dark';
 
     const signInWithEmail = async () => {
-        const expoPushToken = await registerForPushNotificationsAsync();
         if (!email || !password) {
             ToastAndroid.show('Please fill in all fields', ToastAndroid.SHORT);
             return;
@@ -45,12 +44,11 @@ const Signup = () => {
             email, password, options: {
                 data: {
                     username: username,
-                    full_name: fullName,
-                    expo_push_token: expoPushToken
+                    full_name: fullName
                 }
             }
         });
-
+        console.log("signup error", error)
         if (error) {
             ToastAndroid.show(error.message, ToastAndroid.SHORT);
         } else {

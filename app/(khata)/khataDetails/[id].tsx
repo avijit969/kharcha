@@ -76,7 +76,7 @@ const KhataDetailes = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('members')
-                .select('*, users(id,full_name, avatar,expo_push_token)')
+                .select('*, users(id,full_name, avatar)')
                 .eq('khata_id', id as string)
             if (error) {
                 ToastAndroid.show(error.message, ToastAndroid.SHORT);
@@ -87,7 +87,6 @@ const KhataDetailes = () => {
                     full_name: member.users.full_name,
                     avatar: member.users.avatar,
                     role: member.role,
-                    expo_push_token: member.users.expo_push_token
                 }))
                 dispatch(setMembers({ khata_id: id as string, members: formatedMembers }))
             }

@@ -7,7 +7,7 @@ import {
     Modal,
     Text
 } from 'react-native';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +22,7 @@ import { hp, wp } from '@/helpers/common';
 import { supabase } from '@/lib/supabase';
 
 import { RootState } from '@/store/store';
-import { removeKharcha } from '@/features/kharcha/kharchaSlice';
+import { removeKharcha, addKharcha, updateKharcha } from '@/features/kharcha/kharchaSlice';
 import { theme } from '@/constants/theme';
 import Header from '@/components/Header';
 import { StatusBar } from 'expo-status-bar';
@@ -98,6 +98,37 @@ const All_kharcha = () => {
             minute: '2-digit'
         });
     };
+
+    // realtime update with redux state management
+    useEffect(() => {
+        const subscription = supabase.channel("kharcha_channel")
+            .on("postgres_changes", {
+                event: "*",
+                schema: "public",
+                table: "kharcha",
+                filter: `khata_id=eq.${id}`,
+            }, async (payload: any) => {
+                // insert the kharcha in realtime for showing to all members of the khata
+                if (payload.eventType === 'INSERT') {
+                    // get user avatar and full name
+                    const { data: user } = await supabase.from("users").select("avatar,full_name").eq("id", payload.new.created_by);
+                    payload.new.users = user?.[0];
+                    dispatch(addKharcha(payload.new));
+                }
+                // Delete in realtime with state management
+                if (payload.eventType === 'DELETE') {
+                    dispatch(removeKharcha({ id: payload.old.id }));
+                }
+                // Update in realtime with state management
+                if (payload.eventType === 'UPDATE') {
+                    dispatch(updateKharcha(payload.new));
+                }
+            })
+            .subscribe();
+        return () => {
+            supabase.removeChannel(subscription);
+        };
+    }, [id, dispatch]);
 
     const renderItem = ({ item }: { item: Kharcha }) => (
         <ThemedView style={[styles.card, {
