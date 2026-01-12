@@ -13,6 +13,7 @@ interface Theme {
     roseLight: string;
     disabled: string;
     background: string;
+    success: string;
   };
   fonts: {
     medium: string;
@@ -45,6 +46,7 @@ export const theme: Theme = {
     roseLight: "#f87171",
     disabled: "#000",
     background: "#EFF3FB",
+    success: "#2ecc71",
   },
   fonts: {
     medium: "500",

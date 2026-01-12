@@ -22,6 +22,10 @@ import { removeKhata } from '@/features/khata/khataSlice'
 import EditKhataActionModal from '@/components/EditKhataActionModal'
 import { createShimmerPlaceholder } from 'react-native-shimmer-placeholder'
 import { LinearGradient } from 'expo-linear-gradient'
+import SettleUpModal from '@/components/SettleUpModal'
+import DebtsSummary from '@/components/DebtsSummary'
+import { calculateSettlements, SettlementStats } from '@/helpers/settlement'
+import { Tables } from '@/database.types'
 
 const ShimmerPlaceholder = createShimmerPlaceholder(LinearGradient);
 
@@ -44,8 +48,13 @@ const KhataDetailes = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
     const [showOptionsMenu, setShowOptionsMenu] = useState(false)
+    const [showSettleUpModal, setShowSettleUpModal] = useState(false)
     const [showAddKharchaModal, setShowAddKharchaModal] = useState(false)
     const [selectedKharcha, setSelectedKharcha] = useState<any>(undefined);
+
+    // Data for Settlements
+    const [splits, setSplits] = useState<Tables<'splits'>[]>([]);
+    const [settlements, setSettlements] = useState<Tables<'settlements'>[]>([]);
 
     const [loading, setLoading] = useState(false)
 
@@ -55,20 +64,45 @@ const KhataDetailes = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('kharcha')
-                .select('*, users(full_name, avatar)')
+                .select('*, users(full_name, avatar), splits(*)')
                 .eq('khata_id', id as string);
 
             if (error) {
                 console.error("Error fetching kharcha:", error);
             }
             if (data) {
-                dispatch(setKharcha(data as any));
+                // Extract splits from kharcha
+                const allSplits: Tables<'splits'>[] = [];
+                const kharchaData = data.map((k: any) => {
+                    if (k.splits) {
+                        allSplits.push(...k.splits);
+                    }
+                    return k;
+                });
+                setSplits(allSplits);
+                dispatch(setKharcha(kharchaData as any));
             }
             setLoading(false);
         };
 
         findAllKharchaByKhataId();
+        fetchSettlements();
     }, [id]);
+
+    const fetchSettlements = async () => {
+        if (!id) return;
+        const { data, error } = await supabase
+            .from('settlements')
+            .select('*')
+            .eq('khata_id', id as string);
+
+        if (error) {
+            console.error(error);
+        }
+        if (data) {
+            setSettlements(data);
+        }
+    }
 
     useEffect(() => {
         if (!id) return;
@@ -129,6 +163,28 @@ const KhataDetailes = () => {
 
     const totalExpense = kharcha.map((item) => item.amount || 0).reduce((a, b) => a + b, 0).toFixed(2);
 
+    const settlementStats = React.useMemo(() => {
+        if (!khataMembersEntry?.members) return { totalSpent: 0, userBalances: [], simplifiedDebts: [] };
+
+        // Map Redux members to simple objects
+        const membersData = khataMembersEntry.members.map(m => ({ id: m.id, full_name: m.full_name }));
+
+        return calculateSettlements(
+            membersData,
+            kharcha,
+            splits,
+            settlements
+        );
+    }, [khataMembersEntry, kharcha, splits, settlements]);
+
+    /**
+     * Finds the current user's balance from the stats
+     */
+
+
+    // Get current user for display
+    const user = useSelector((state: RootState) => state.user.user);
+
     return (
         <ScreenWrapper>
             <ThemedView style={{ flex: 1 }}>
@@ -186,6 +242,13 @@ const KhataDetailes = () => {
                         </View>
                     </View>
 
+                    {/* Debts Summary */}
+                    <DebtsSummary
+                        stats={settlementStats}
+                        members={khataMembersEntry?.members || []}
+                        currentUserId={user?.id}
+                    />
+
                     {/* Details Section */}
                     <View style={styles.section}>
                         <ThemedText style={styles.sectionTitle}>About</ThemedText>
@@ -224,10 +287,10 @@ const KhataDetailes = () => {
                         textStyle={{ fontWeight: 'bold' }}
                     />
                     <TouchableOpacity
-                        style={[styles.secondaryButton, { borderColor: isDark ? '#444' : '#ddd' }]}
-                        onPress={() => router.push(`/(kharcha)/kharcha/${khata?.id}` as any)}
+                        style={[styles.secondaryButton, { borderColor: isDark ? '#444' : '#ddd', backgroundColor: isDark ? '#333' : '#f0f9ff' }]}
+                        onPress={() => setShowSettleUpModal(true)}
                     >
-                        <Ionicons name="receipt-outline" size={24} color={isDark ? '#ccc' : '#666'} />
+                        <Ionicons name="swap-horizontal" size={24} color={appTheme.colors.primary} />
                     </TouchableOpacity>
                 </View>
             </ThemedView>
@@ -263,6 +326,35 @@ const KhataDetailes = () => {
             </Modal>
             <ActionModal title='Delete Khata' message='Are you sure you want to delete this khata completely?' visible={showDeleteModal} onConfirm={() => deleteKhata(id as string)} onCancel={() => setShowDeleteModal(false)} confirmText='Delete' />
             <EditKhataActionModal visible={showEditModal} khataDetails={khata as any} onClose={() => setShowEditModal(false)} />
+            <SettleUpModal
+                visible={showSettleUpModal}
+                onClose={() => setShowSettleUpModal(false)}
+                khataId={id as string}
+                khataName={khata?.name}
+                onSuccess={() => {
+                    // Refetch data
+                    const findAllKharchaByKhataId = async () => {
+                        const { data, error } = await supabase
+                            .from('kharcha')
+                            .select('*, users(full_name, avatar), splits(*)')
+                            .eq('khata_id', id as string);
+
+                        if (data) {
+                            const allSplits: Tables<'splits'>[] = [];
+                            const kharchaData = data.map((k: any) => {
+                                if (k.splits) {
+                                    allSplits.push(...k.splits);
+                                }
+                                return k;
+                            });
+                            setSplits(allSplits);
+                            dispatch(setKharcha(kharchaData as any));
+                        }
+                    };
+                    findAllKharchaByKhataId();
+                    fetchSettlements();
+                }}
+            />
         </ScreenWrapper >
     )
 }
